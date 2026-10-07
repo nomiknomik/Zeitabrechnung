@@ -80,7 +80,7 @@ header .ttl b{font-family:var(--round);font-size:17px;font-weight:700;white-spac
 #syncBtn[data-st=err]{color:var(--danger)} #syncBtn[data-st=busy] .ic{animation:dreh 1s linear infinite}
 @keyframes dreh{to{transform:rotate(360deg)}}
 
-main{padding:calc(env(safe-area-inset-top) + 66px) 16px calc(env(safe-area-inset-bottom) + 96px);max-width:640px;margin:0 auto}
+main{padding:calc(env(safe-area-inset-top) + 66px) 16px calc(env(safe-area-inset-bottom) + 84px);max-width:640px;margin:0 auto}
 .tab{display:none;animation:tabIn .35s cubic-bezier(.2,.8,.2,1)}
 .tab.on{display:block}
 @keyframes tabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -91,9 +91,11 @@ h2 .sp{flex:1}
 h2 button{font-family:var(--font);text-transform:none;letter-spacing:0;font-size:14px;color:var(--terra);font-weight:600}
 
 /* ---------- Tab-Leiste ---------- */
-nav{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:20;max-width:520px;margin:0 auto;
-  display:flex;padding:6px;border-radius:26px;background:color-mix(in srgb,var(--surface) 86%,transparent);
-  -webkit-backdrop-filter:saturate(1.6) blur(20px);backdrop-filter:saturate(1.6) blur(20px);box-shadow:var(--shadow-lg);border:1px solid var(--line)}
+/* Tab-Leiste am unteren Rand; Home-Indikator-Bereich (safe-area) gehoert zur Leiste */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  display:flex;padding:6px max(10px, calc((100vw - 540px) / 2)) calc(env(safe-area-inset-bottom) + 6px);border-radius:22px 22px 0 0;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);backdrop-filter:saturate(1.6) blur(20px);box-shadow:0 -6px 24px rgba(58,46,37,.07);border-top:1px solid var(--line)}
 nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 5px;border-radius:20px;color:var(--muted);font-size:11px;font-weight:600;position:relative;transition:color .2s}
 nav button.on{color:var(--terra)}
 nav button.on::before{content:"";position:absolute;inset:0;border-radius:20px;background:var(--terra-soft);z-index:-1;animation:pop .35s cubic-bezier(.3,1.5,.5,1)}
@@ -307,7 +309,7 @@ button.row:active{background:var(--surface2)}
 .colors button.on{box-shadow:inset 0 0 0 3px var(--bg),0 0 0 2.5px var(--c)}
 
 /* ---------- Toast, Konfetti ---------- */
-.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);z-index:60;transform:translate(-50%,30px);opacity:0;
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 80px);z-index:60;transform:translate(-50%,30px);opacity:0;
   background:#3A2E25;color:#FBF5EC;border-radius:16px;padding:11px 12px 11px 16px;display:flex;align-items:center;gap:12px;font-size:14px;
   box-shadow:var(--shadow-lg);transition:all .35s cubic-bezier(.3,1.4,.5,1);pointer-events:none;max-width:calc(100vw - 32px)}
 .toast.on{transform:translate(-50%,0);opacity:1;pointer-events:auto}
@@ -1662,7 +1664,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.6';
+const APP_VERSION = '1.2.7';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
