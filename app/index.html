@@ -545,7 +545,7 @@ const RU = {
   'Was hast du bezahlt?':'Что ты оплатила?','z. B. Putzmittel':'например, моющие средства',
   'Diese Meldung wurde abgelehnt':'Эта запись отклонена','Zahlungsart':'Способ оплаты','bar':'наличные','Überweisung':'перевод',
   'Hinweis':'Подсказка','Du bist angemeldet als':'Ты подключена как','Wirklich entfernen? Alle Daten auf diesem Gerät werden gelöscht.':'Точно удалить? Все данные на этом устройстве будут удалены.',
-  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве'
+  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве','Trinkgeld':'чаевые','zu klären':'уточнить'
 };
 const T = s => (typeof L !== 'undefined' && L.sprache === 'ru' && RU[s]) || s;
 const PLURAL = {Eintrag:['Eintrag','Einträge','запись','записи','записей'], Buchung:['Buchung','Buchungen','операция','операции','операций'], Meldung:['Meldung','Meldungen','запись','записи','записей']};
@@ -686,7 +686,8 @@ function satzAm(a, datum){
   let r = s[0]; for(const x of s) if(x.ab <= datum) r = x;
   return r.cent;
 }
-const betrag = e => Math.round(e.minuten * e.cent / 60);
+const betrag = e => Math.round(e.minuten * e.cent / 60) + (e.trinkgeld || 0);     // Trinkgeld in Cent, zusaetzlich zur Arbeitszeit
+const TIP_SCHRITT = 500;
 const eintraege = (filter) => Object.entries(D.entries).map(([id, e]) => ({id, ...e})).filter(filter || (() => true));
 const tagEintraege = (datum, pid) => eintraege(e => e.datum === datum && (!pid || e.personId === pid))
   .sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999) || (a.erstellt || '').localeCompare(b.erstellt || ''));
@@ -975,13 +976,14 @@ function renderEintraege(es){
   el.innerHTML = es.map(e => { const a = act(e.actId);
     const stat = e.meld ? (e.zustand === 'abgelehnt' ? `<span class="tag ab">${T('Abgelehnt')}</span>` : `<span class="tag offen">${T('Offen')}</span>`)
       : !MA && e.quelle ? `<span class="tag neu" title="von der Person gemeldet">${icon('check', 'width:11px;height:11px;display:inline;vertical-align:-1px')}</span>` : '';
+    const klar = !e.meld && e.klaeren ? `<span class="tag offen">${T('zu klären')}</span>` : '';
     const grund = e.meld && e.zustand === 'abgelehnt' && D.meldStatus[e.meld.id]?.grund ? ` · ${T('Grund')}: ${esc(D.meldStatus[e.meld.id].grund)}` : '';
     return `<div class="swipe" data-id="${e.id}">
       <div class="bg"><span style="color:#fff">${icon('copy')}${MA ? '' : 'Duplizieren'}</span><span>${T('Löschen')}${icon('trash')}</span></div>
       <div class="fg"><button class="entry${neuIds.has(e.id) ? ' neu' : ''}${e.meld ? ' ' + (e.zustand === 'abgelehnt' ? 'abgelehnt' : 'offen') : ''}" style="--tc:${a.farbe}"><span class="bar"></span>
         <span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
-        <span class="grow" style="flex:1;min-width:0"><span class="t" style="font-weight:600">${esc(aName(a))}</span>${e.von && !e.meld ? `<span class="who">${esc(kuerzel(e.von))}</span>` : ''}${stat}
-          <span class="s" style="display:block;font-size:13px;color:var(--muted)">${e.start != null ? `${uhr(e.start)}–${uhr(e.ende ?? e.start + e.minuten)} · ` : ''}${dauerT(e.minuten)} · ${eur(e.cent)}/h${e.notiz && !MA ? ' · ' + esc(e.notiz) : ''}${e.notizMa ? ' · „' + esc(e.notizMa) + '“' : ''}${grund}</span></span>
+        <span class="grow" style="flex:1;min-width:0"><span class="t" style="font-weight:600">${esc(aName(a))}</span>${e.von && !e.meld ? `<span class="who">${esc(kuerzel(e.von))}</span>` : ''}${stat}${klar}
+          <span class="s" style="display:block;font-size:13px;color:var(--muted)">${e.start != null ? `${uhr(e.start)}–${uhr(e.ende ?? e.start + e.minuten)} · ` : ''}${dauerT(e.minuten)} · ${eur(e.cent)}/h${e.trinkgeld ? ` · +${eur(e.trinkgeld)} ${T('Trinkgeld')}` : ''}${e.notiz && !MA ? ' · ' + esc(e.notiz) : ''}${e.notizMa ? ' · „' + esc(e.notizMa) + '“' : ''}${grund}</span></span>
         <span class="amt num">${eur(betrag(e))}</span></button></div></div>`; }).join('');
   neuIds = new Set();
   el.querySelectorAll('.swipe').forEach(wischbar);
@@ -1025,6 +1027,8 @@ function eintragAktionenAG(id){
   const e = D.entries[id]; if(!e) return;
   aktionen(`${act(e.actId).name} · ${dauerT(e.minuten)}`, [
     {icon:'pencil', text:'Bearbeiten', fn:() => eintragSheet({id})},
+    D.entries[id].klaeren ? {icon:'check', text:'Als geklärt markieren', farbe:'#557352', fn:() => { if(!D.entries[id]) return; delete D.entries[id].klaeren; save(); renderErfassen(); toast('Geklärt'); }}
+      : {icon:'alert', text:'Als „zu klären“ markieren', farbe:'#D29B3C', fn:() => { if(!D.entries[id]) return; D.entries[id].klaeren = true; save(); renderErfassen(); }},
     {icon:'copy', text:'Duplizieren', fn:() => eintragDuplizierenAG(id)},
     {icon:'calendar', text:'Auf anderen Tag kopieren …', fn:() => kopierenAuf(id)},
     {icon:'trash', text:'Löschen', rot:true, farbe:'#B8483A', fn:() => eintragLoeschenAG(id)}
@@ -1075,8 +1079,9 @@ function eintragSheet({id, actId, meldId, pruef}){
   const kandidaten = Object.values(D.entries).concat(MA ? Object.values(MELD.list).filter(m => m.art === 'arbeit') : []);
   for(const e of kandidaten) if(e.actId === a0 && (!vorbild || e.datum > vorbild.datum || (e.datum === vorbild.datum && (e.erstellt || '') > (vorbild.erstellt || '')))) vorbild = e;
   const quelle = alt || altM || pm;
-  const st = quelle ? {actId:a0, personId:alt ? alt.personId : pm ? pruef.pid : aktPerson().id, datum:quelle.datum, start:quelle.start ?? null, minuten:quelle.minuten, notiz:(pm ? '' : quelle.notiz) || ''}
-                    : {actId:a0, personId:aktPerson().id, datum:tag, start:vorbild ? vorbild.start ?? null : 9 * 60, minuten:vorbild ? vorbild.minuten : 120, notiz:''};
+  const st = quelle ? {actId:a0, personId:alt ? alt.personId : pm ? pruef.pid : aktPerson().id, datum:quelle.datum, start:quelle.start ?? null, minuten:quelle.minuten, notiz:(pm ? '' : quelle.notiz) || '',
+                       trinkgeld:alt ? alt.trinkgeld || 0 : 0, klaeren:!!(alt && alt.klaeren)}
+                    : {actId:a0, personId:aktPerson().id, datum:tag, start:vorbild ? vorbild.start ?? null : 9 * 60, minuten:vorbild ? vorbild.minuten : 120, notiz:'', trinkgeld:0, klaeren:false};
   let feld = st.start != null ? 'start' : 'dauer';
   const satz = () => alt && alt.actId === st.actId && alt.datum === st.datum ? alt.cent : satzAm(act(st.actId), st.datum);
   const ps = MA || pm ? [] : personen(), as = taetigkeiten();
@@ -1096,6 +1101,13 @@ function eintragSheet({id, actId, meldId, pruef}){
     <div class="notime"><span>${T('Mit Uhrzeit')}</span><input type="checkbox" class="switch" id="esT"></div>
     <div class="chips" id="esC">${DAUERN.map(m => `<button class="chip" data-m="${m}">${m % 60 ? dauer(m) : m / 60 + ' h'}</button>`).join('')}
       <button class="chip" data-d="-15">−15</button><button class="chip" data-d="15">+15</button></div>
+    ${MA ? '' : `<div class="list" style="margin-top:12px">
+      <div class="field"><label>Trinkgeld</label><span style="flex:1"></span>
+        <button class="chip" id="esTm" style="box-shadow:none;background:var(--surface2);padding:7px 10px">${icon('minus')}</button>
+        <b class="num" id="esTv" style="min-width:58px;text-align:center;font-size:16px"></b>
+        <button class="chip" id="esTp" style="box-shadow:none;background:var(--terra-soft);color:var(--terra);padding:7px 11px">${icon('plus')}5 €</button></div>
+      <div class="field"><label>Zu klären</label><span style="flex:1;font-size:13px;color:var(--muted)">Zeiten noch unsicher</span><input type="checkbox" class="switch" id="esK"></div>
+    </div>`}
     <div class="calc"><span id="esF"></span><b class="num" id="esB"></b></div>
     <div class="list">
       <div class="field"><label>${T('Datum')}</label><input type="date" id="esDat" value="${st.datum}"></div>
@@ -1131,8 +1143,10 @@ function eintragSheet({id, actId, meldId, pruef}){
       b.querySelectorAll('#esA [data-a]').forEach(c => { const on = c.dataset.a === st.actId; c.classList.toggle('on', on); c.style.background = on ? c.style.getPropertyValue('--tc') : ''; c.style.color = on ? '#fff' : ''; c.firstElementChild.style.color = on ? '#fff' : c.style.getPropertyValue('--tc'); });
       b.querySelectorAll('#esP [data-p]').forEach(c => c.classList.toggle('on', c.dataset.p === st.personId));
       const s = satz();
-      q('#esF').textContent = `${dauer(st.minuten)} h × ${eur(s)}/h`;
-      zaehle(q('#esB'), Math.round(st.minuten * s / 60), eur, 450);
+      const tg = MA ? 0 : st.trinkgeld;
+      q('#esF').textContent = `${dauer(st.minuten)} h × ${eur(s)}/h${tg ? ' + Trinkgeld' : ''}`;
+      zaehle(q('#esB'), Math.round(st.minuten * s / 60) + tg, eur, 450);
+      if(!MA){ q('#esTv').textContent = eur(st.trinkgeld); q('#esTm').style.opacity = st.trinkgeld ? 1 : .4; q('#esK').checked = st.klaeren; }
       $('shTitle').textContent = titel();
     }
     b.querySelectorAll('.tcard').forEach(c => c.onclick = () => {
@@ -1148,6 +1162,12 @@ function eintragSheet({id, actId, meldId, pruef}){
     const esP = q('#esP'); if(esP) esP.onclick = e => { const c = e.target.closest('[data-p]'); if(!c) return; tick(); st.personId = c.dataset.p; karten(); };
     q('#esDat').onchange = e => { if(e.target.value){ st.datum = e.target.value; karten(); } };
     q('#esN').oninput = e => st.notiz = e.target.value;
+    if(!MA){
+      q('#esTp').onclick = () => { tick(); st.trinkgeld += TIP_SCHRITT; karten(); };
+      q('#esTm').onclick = () => { if(!st.trinkgeld) return; tick(); st.trinkgeld = Math.max(0, st.trinkgeld - TIP_SCHRITT); karten(); };
+      q('#esTv').onclick = () => { const v = prompt('Trinkgeld in €', centZuEuro(st.trinkgeld)); if(v == null) return; const c = euroZuCent(v || '0'); if(c >= 0){ st.trinkgeld = c; karten(); } };
+      q('#esK').onchange = e => { st.klaeren = e.target.checked; tick(); };
+    }
     if(alt) q('#esDel').onclick = () => { schliesseSheet(); eintragLoeschenAG(id); };
     if(altM) q('#esDel').onclick = () => { schliesseSheet(); meldLoeschen(meldId); };
     q('#esOk').onclick = () => {
@@ -1169,9 +1189,10 @@ function eintragSheet({id, actId, meldId, pruef}){
       D.entries[nid] = {...(alt && alt.quelle ? {quelle:alt.quelle, notizMa:alt.notizMa || '', bestaetigt:alt.bestaetigt || ''} : {}),
         datum:st.datum, personId:st.personId, actId:st.actId, start:st.start, ende:st.start != null ? (st.start + st.minuten) % 1440 : null,
         minuten:st.minuten, cent:s, notiz:st.notiz.trim(), von: alt ? alt.von : (L.name || ''), erstellt: alt ? alt.erstellt : new Date().toISOString(),
+        ...(st.trinkgeld ? {trinkgeld:st.trinkgeld} : {}), ...(st.klaeren ? {klaeren:true} : {}),
         ...(alt ? {geaendert:new Date().toISOString()} : {})};
       tag = st.datum; neuIds = new Set([nid]); save(); schliesseSheet(); renderErfassen(true); tick();
-      toast(`${n}: ${dauerT(st.minuten)} · ${eur(Math.round(st.minuten * s / 60))} ${alt ? 'gespeichert' : 'erfasst'}`);
+      toast(`${n}: ${dauerT(st.minuten)} · ${eur(betrag(D.entries[nid]))} ${alt ? 'gespeichert' : 'erfasst'}${st.klaeren ? ' · zu klären' : ''}`);
     };
     karten(); raeder();
     const c = esA.querySelector('.on'); if(c) esA.scrollLeft = c.offsetLeft - 16;
@@ -1462,10 +1483,10 @@ $('pNext').onclick = () => blaettern(1);
 /* CSV (Semikolon, Dezimalkomma, BOM - oeffnet direkt in Excel/Numbers) */
 async function csvExport(r, pid){
   const n = v => (v / 100).toFixed(2).replace('.', ','), q = v => /[;"\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v;
-  const z = [['Datum','Person','Tätigkeit','Beginn','Ende','Dauer (h)','Satz (€/h)','Betrag (€)','Notiz','Erfasst von']];
+  const z = [['Datum','Person','Tätigkeit','Beginn','Ende','Dauer (h)','Satz (€/h)','Trinkgeld (€)','Betrag (€)','Zu klären','Notiz','Erfasst von']];
   eintraege(e => e.personId === pid && e.datum >= r.von && e.datum <= r.bis).sort((a, b) => a.datum.localeCompare(b.datum) || (a.start ?? 0) - (b.start ?? 0))
     .forEach(e => z.push([dmy(e.datum), pname(e.personId), act(e.actId).name, e.start != null ? uhr(e.start) : '', e.start != null ? uhr((e.start + e.minuten) % 1440) : '',
-      (e.minuten / 60).toFixed(2).replace('.', ','), n(e.cent), n(betrag(e)), e.notiz || '', e.von || '']));
+      (e.minuten / 60).toFixed(2).replace('.', ','), n(e.cent), n(e.trinkgeld || 0), n(betrag(e)), e.klaeren ? 'ja' : '', e.notiz || '', e.von || '']));
   z.push([], ['Datum','Person','Buchung','Betrag (€)','Zahlungsart','Notiz','Erfasst von']);
   buchungen(t => t.personId === pid && t.datum >= r.von && t.datum <= r.bis).sort((a, b) => a.datum.localeCompare(b.datum))
     .forEach(t => z.push([dmy(t.datum), pname(t.personId), TX[t.typ].name, n(txWert(t)), t.zahlart || '', t.notiz || '', t.von || '']));
@@ -1664,7 +1685,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.7';
+const APP_VERSION = '1.3.0';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -2105,10 +2126,25 @@ function renderMeldBanner(){
   if(MA){ el.innerHTML = ''; return; }
   const offen = alleOffenen();
   const fehler = Object.entries(axFehler).filter(([pid, f]) => f && D.persons[pid]);
-  el.innerHTML = offen.length ? `<button class="card meldbanner" id="mbGo" style="width:100%;text-align:left"><span class="bubble" style="background:var(--ochre);color:#fff">${icon('receipt')}</span>
+  const kl = zuKlaeren();
+  const klKarte = kl.length ? `<button class="card meldbanner" id="klGo" style="width:100%;text-align:left;background:linear-gradient(135deg,var(--terra-soft),var(--surface));border-color:color-mix(in srgb,var(--terra) 25%,transparent)"><span class="bubble" style="background:var(--terra);color:#fff">${icon('alert')}</span>
+      <span style="flex:1"><b>${kl.length} ${kl.length === 1 ? 'Eintrag' : 'Einträge'} zu klären</b><span class="s">antippen zum Prüfen</span></span>${icon('chevR')}</button>` : '';
+  el.innerHTML = klKarte + (offen.length ? `<button class="card meldbanner" id="mbGo" style="width:100%;text-align:left"><span class="bubble" style="background:var(--ochre);color:#fff">${icon('receipt')}</span>
       <span style="flex:1"><b>${offen.length} ${offen.length === 1 ? 'neue Meldung' : 'neue Meldungen'}</b><span class="s">von ${esc([...new Set(offen.map(x => pname(x.pid)))].join(', '))} – antippen zum Prüfen</span></span>${icon('chevR')}</button>`
-    : fehler.length ? `<div class="msg" style="margin:0 4px 10px"><span class="no">Eigene App von ${esc(pname(fehler[0][0]))}: ${esc(fehler[0][1])}</span></div>` : '';
+    : fehler.length ? `<div class="msg" style="margin:0 4px 10px"><span class="no">Eigene App von ${esc(pname(fehler[0][0]))}: ${esc(fehler[0][1])}</span></div>` : '');
   const b = $('mbGo'); if(b) b.onclick = meldungenSheet;
+  const k = $('klGo'); if(k) k.onclick = klaerenSheet;
+}
+const zuKlaeren = () => eintraege(e => e.klaeren).sort((a, b) => a.datum.localeCompare(b.datum) || (a.start ?? 0) - (b.start ?? 0));
+function klaerenSheet(){
+  const ls = zuKlaeren(); if(!ls.length){ schliesseSheet(); return; }
+  oeffneSheet('Zu klären', `<div class="list">${ls.map(e => { const a = act(e.actId);
+    return `<button class="row" data-k="${e.id}"><span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
+      <span class="grow"><span class="t">${esc(a.name)}${personen().length > 1 ? ' · ' + esc(pname(e.personId)) : ''}</span><span class="s">${WT[wtag(e.datum)]} ${dm(e.datum)} · ${e.start != null ? uhr(e.start) + '–' + uhr((e.start + e.minuten) % 1440) + ' · ' : ''}${dauerT(e.minuten)}${e.notiz ? ' · ' + esc(e.notiz) : ''}</span></span>
+      <span class="amt num" style="font-weight:700">${eur(betrag(e))}</span></button>`; }).join('')}</div>
+    <p class="hint">Antippen = Eintrag öffnen, Zeiten korrigieren und „Zu klären“ ausschalten.</p>`, b => {
+    b.querySelectorAll('[data-k]').forEach(el => el.onclick = () => { tick(); const e = D.entries[el.dataset.k]; schliesseSheet(); setTimeout(() => { tag = e.datum; zeigeTab('erf'); eintragSheet({id:el.dataset.k}); }, 150); });
+  });
 }
 function meldZeile(m, pid){
   const s = D.meldStatus[m.id], neu = !s ? 'neu' : s.status === 'abgelehnt' ? 'erneut' : 'geändert';
@@ -2157,7 +2193,8 @@ function meldUebernehmen(m, pid, w, still){
     w = w || {actId:m.actId, datum:m.datum, start:m.start ?? null, minuten:m.minuten, notiz:undefined}; art = 'entries';
     const alt = D.entries[ziel], cent = alt && alt.actId === w.actId && alt.datum === w.datum ? alt.cent : satzAm(act(w.actId), w.datum);
     D.entries[ziel] = {datum:w.datum, personId:pid, actId:w.actId, start:w.start ?? null, ende:w.start != null ? (w.start + w.minuten) % 1440 : null,
-      minuten:w.minuten, cent, notiz:(w.notiz ?? (alt ? alt.notiz : '')) || '', notizMa:m.notiz || '', quelle:m.id, von:pname(pid), bestaetigt:L.name || '',
+      minuten:w.minuten, cent, notiz:(w.notiz ?? (alt ? alt.notiz : '')) || '', notizMa:m.notiz || '',
+      ...(w.trinkgeld ? {trinkgeld:w.trinkgeld} : {}), ...(w.klaeren ? {klaeren:true} : {}), quelle:m.id, von:pname(pid), bestaetigt:L.name || '',
       erstellt:alt ? alt.erstellt : jetzt, ...(alt ? {geaendert:jetzt} : {})};
     gleich = w.actId === m.actId && w.datum === m.datum && (w.start ?? null) === (m.start ?? null) && w.minuten === m.minuten;
   }
