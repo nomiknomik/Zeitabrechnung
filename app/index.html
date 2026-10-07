@@ -73,7 +73,7 @@ header.scrolled{border-bottom-color:var(--line)}
 header .ttl{flex:1;min-width:0}
 header .ttl small{display:block;color:var(--muted);font-size:12px;letter-spacing:.02em}
 header .ttl b{font-family:var(--round);font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-.vchip{font-size:11px;color:var(--muted);background:var(--surface2);border-radius:99px;padding:3px 8px;font-family:var(--round)}
+.vchip{cursor:pointer;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:99px;padding:3px 8px;font-family:var(--round)}
 .hbtn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
 .hbtn:active{background:var(--surface2)}
 #syncBtn[data-st=ok]{color:var(--sage)} #syncBtn[data-st=wait]{color:var(--ochre)}
@@ -464,7 +464,6 @@ body:not(.ma) .nur-ma{display:none!important}
     <div class="list">
       <div class="field"><label data-t>Version</label><input id="verNum" readonly></div>
       <div class="field"><label data-t>Stand</label><input id="verDate" readonly></div>
-      <button class="row" id="checkUpdate"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)" data-i="refresh"></span><span class="grow"><span class="t" data-t>Nach Update suchen</span><span class="s" id="updateInfo" data-t>lädt die neueste Version</span></span></button>
     </div>
     <p class="hint nur-ag" style="text-align:center;margin-top:22px">Alle Daten bleiben auf deinen Geräten bzw. verschlüsselt in deinem Repo.</p>
   </section>
@@ -524,7 +523,7 @@ const RU = {
   'Beginn':'Начало','Ende':'Конец','Dauer':'Длительность','Mit Uhrzeit':'С указанием времени','Datum':'Дата','Notiz':'Заметка','optional':'необязательно',
   'Speichern':'Сохранить','Melden':'Отправить','Löschen':'Удалить','Bearbeiten':'Изменить','Abbrechen':'Отмена',
   'Verlauf':'История','Arbeit':'Работа','Ältere anzeigen':'Показать старые','Noch keine Buchungen.':'Пока нет операций.',
-  'Auszahlung':'Выплата','Auslage':'Расход','Darlehen':'Заём','Rückzahlung':'Возврат','Korrektur':'Корректировка',
+  'Auszahlung':'Выплата','Ausgabe':'Расход','Darlehen':'Заём','Rückzahlung':'Возврат','Korrektur':'Корректировка',
   'Woche':'Неделя','Monat':'Месяц','Quartal':'Квартал','Jahr':'Год',
   'Verdienst':'Заработок','Stunden':'Часы','Einsatztage':'Рабочие дни','Ausgezahlt':'Выплачено',
   'zur Vorperiode':'к прошлому периоду','pro Tag':'в день','Saldo am':'Баланс на','offen':'к оплате','Schuld':'долг','ausgeglichen':'рассчитано',
@@ -538,7 +537,7 @@ const RU = {
   'offen ·':'ждёт подтверждения ·','Offen':'Ждёт','Bestätigt':'Подтверждено','Abgelehnt':'Отклонено','geändert':'изменено',
   'Noch nicht bestätigt':'Ещё не подтверждено','davon vorläufig':'из них предварительно',
   'Sie schulden dir':'Тебе должны','Du schuldest':'Ты должна','Ausgeglichen':'Всё рассчитано',
-  'Auslage melden':'Сообщить о расходе','Betrag':'Сумма','Gemeldet':'Отправлено','Gelöscht':'Удалено','Rückgängig':'Отменить',
+  'Ausgabe melden':'Сообщить о расходе','Betrag':'Сумма','Gemeldet':'Отправлено','Gelöscht':'Удалено','Rückgängig':'Отменить',
   'Erneut melden':'Отправить снова','Entfernen':'Убрать','Grund':'Причина',
   'Abgeglichen':'Синхронизировано','Gleiche ab …':'Синхронизация …','Änderungen noch nicht gesendet':'Изменения ещё не отправлены',
   'Offline – wird später abgeglichen':'Нет сети – синхронизация позже','Noch nicht verbunden':'Ещё не подключено',
@@ -708,7 +707,7 @@ const tagEintraege = (datum, pid) => eintraege(e => e.datum === datum && (!pid |
 /* Buchungsarten; Vorzeichen aus Sicht der Person: + = wir schulden ihr */
 const TX = {
   auszahlung:  {name:'Auszahlung',  kurz:'Auszahlen', sign:-1, icon:'banknote', farbe:'#C4633A', hilfe:'Du zahlst an {p} – verringert ihr Guthaben.'},
-  auslage:     {name:'Auslage',     kurz:'Auslage',   sign: 1, icon:'receipt',  farbe:'#D29B3C', hilfe:'{p} hat etwas für euch bezahlt – erhöht ihr Guthaben.'},
+  auslage:     {name:'Ausgabe',     kurz:'Ausgabe',   sign: 1, icon:'receipt',  farbe:'#D29B3C', hilfe:'{p} hat etwas für euch bezahlt – erhöht ihr Guthaben.'},
   darlehen:    {name:'Darlehen',    kurz:'Darlehen',  sign:-1, icon:'arrowUR',  farbe:'#8A6A9E', hilfe:'Vorschuss oder Darlehen an {p} – sie schuldet es euch.'},
   rueckzahlung:{name:'Rückzahlung', kurz:'Rückzahl.', sign: 1, icon:'arrowDL',  farbe:'#6E8F69', hilfe:'{p} zahlt euch etwas zurück.'},
   korrektur:   {name:'Korrektur',   kurz:'Korrektur', sign: 0, icon:'scale',    farbe:'#9C7650', hilfe:'Anfangssaldo, Ausfallgeld o. Ä. – Richtung frei wählbar.'}
@@ -919,7 +918,7 @@ function renderSchnell(es, pid){
   if(letzter && !es.length) chips.push(`<button class="chip" data-q="last" data-d="${letzter}">${icon('repeat')}${T('Wie am')} ${WT[wtag(letzter)]} ${dm(letzter)}</button>`);
   if(!MA) for(const t of sortiert(D.tpls)) chips.push(`<button class="chip" data-q="tpl" data-id="${t.id}">${icon('layers')}${esc(t.name)}</button>`);
   if(es.length && !MA) chips.push(`<button class="chip" data-q="save">${icon('bookmark')}Als Vorlage</button>`);
-  if(MA) chips.push(`<button class="chip" data-q="auslage">${icon('receipt')}${T('Auslage melden')}</button>`);
+  if(MA) chips.push(`<button class="chip" data-q="auslage">${icon('receipt')}${T('Ausgabe melden')}</button>`);
   $('quick').innerHTML = chips.join('');
   $('quick').style.display = chips.length ? '' : 'none';
 }
@@ -1243,7 +1242,7 @@ function renderKonto(){
   kopf();
   const p = aktPerson();
   personenWahl($('personSel'), renderKonto);
-  $('txQuick').innerHTML = MA ? `<button data-t="auslage" style="grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;font-size:14px"><span class="bubble" style="color:${TX.auslage.farbe};width:40px;height:40px;border-radius:13px">${icon('receipt')}</span>${T('Auslage melden')}</button>`
+  $('txQuick').innerHTML = MA ? `<button data-t="auslage" style="grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;font-size:14px"><span class="bubble" style="color:${TX.auslage.farbe};width:40px;height:40px;border-radius:13px">${icon('receipt')}</span>${T('Ausgabe melden')}</button>`
     : Object.entries(TX).map(([k, t]) => `<button data-t="${k}"><span class="bubble" style="color:${t.farbe}">${icon(t.icon)}</span>${t.kurz}</button>`).join('');
   renderMaOffen();
   if(!p){
@@ -1318,7 +1317,7 @@ function buchungSheet({id, typ, pruef}){
   const vorher = saldo(st.personId);
   if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = rundeAuf(vorher, 100);   // Vorschlag: Offenes auf volle Euro gerundet
   let vz = alt && alt.typ === 'korrektur' ? (alt.cent < 0 ? -1 : 1) : 1;
-  oeffneSheet(pm ? 'Auslage prüfen' : alt ? 'Buchung bearbeiten' : TX[st.typ].name, `
+  oeffneSheet(pm ? 'Ausgabe prüfen' : alt ? 'Buchung bearbeiten' : TX[st.typ].name, `
     ${pm ? `<p class="hint" style="margin:0 4px 12px">${esc(pname(pruef.pid))} hat gemeldet: ${eur(pm.cent)} am ${dm(pm.datum)}${pm.notiz ? ` · „${esc(pm.notiz)}“` : ''}</p>` : ''}
     <div class="typegrid" id="bT">${Object.entries(TX).map(([k, t]) => `<button data-t="${k}"><span class="bubble" style="background:${t.farbe}22;color:${t.farbe}">${icon(t.icon)}</span>${t.name}</button>`).join('')}</div>
     <div class="amtin"><input id="bA" inputmode="decimal" placeholder="0,00" value="${st.cent ? centZuEuro(Math.abs(st.cent)) : ''}"><span style="font-family:var(--round);font-size:30px;font-weight:800;color:var(--muted)">€</span></div>
@@ -1719,7 +1718,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.3.6';
+const APP_VERSION = '1.3.7';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -2115,7 +2114,7 @@ $('qrScannen').onclick = qrScanner;
    Eigene App fuer die Person (Mitarbeiter-Rolle)
    Eigenes Austausch-Repo mit zwei Dateien, je genau ein Schreiber:
    - spiegel.json:    schreibt nur die Haupt-App (Kopie ohne eure Notizen), wird nie zurueckgelesen
-   - meldungen.json:  schreibt nur die Mitarbeiter-App (gemeldete Zeiten/Auslagen)
+   - meldungen.json:  schreibt nur die Mitarbeiter-App (gemeldete Zeiten/Ausgaben)
    Bestaetigungen stehen synchronisiert in D.meldStatus und gelangen ueber den Spiegel zurueck.
    ===================================================================== */
 const AX = {spiegel:'spiegel.json', meld:'meldungen.json'};
@@ -2196,7 +2195,7 @@ function klaerenSheet(){
 function meldZeile(m, pid){
   const s = D.meldStatus[m.id], neu = !s ? 'neu' : s.status === 'abgelehnt' ? 'erneut' : 'geändert';
   if(m.art === 'auslage') return `<span class="bubble" style="background:${TX.auslage.farbe}22;color:${TX.auslage.farbe}">${icon('receipt')}</span>
-    <span class="grow"><span class="t">Auslage<span class="tag ${neu === 'neu' ? 'neu' : 'offen'}">${neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}</span></span>
+    <span class="grow"><span class="t">Ausgabe<span class="tag ${neu === 'neu' ? 'neu' : 'offen'}">${neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}</span></span>
     <span class="amt num" style="font-weight:700">${eur(m.cent)}</span>`;
   const a = act(m.actId);
   return `<span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
@@ -2217,7 +2216,7 @@ function meldungenSheet(){
   });
 }
 function meldPruefen({m, pid}){
-  aktionen(m.art === 'auslage' ? `Auslage ${eur(m.cent)} · ${dm(m.datum)}` : `${act(m.actId).name} · ${dm(m.datum)} · ${dauerT(m.minuten)}`, [
+  aktionen(m.art === 'auslage' ? `Ausgabe ${eur(m.cent)} · ${dm(m.datum)}` : `${act(m.actId).name} · ${dm(m.datum)} · ${dauerT(m.minuten)}`, [
     {icon:'check', text:'Übernehmen', farbe:'#557352', fn:() => {
       if(m.art === 'arbeit'){ const z = meldZiel(m), ueber = tagEintraege(m.datum, pid).find(e => e.id !== z && e.actId === m.actId &&
           (m.start == null || e.start == null || (m.start < e.start + e.minuten && e.start < m.start + m.minuten)));
@@ -2263,7 +2262,7 @@ function meldAblehnen(m, pid){
 function austauschSheet(pid){
   const c = (D.cfg.austausch || {})[pid] || {}, n = esc(pname(pid));
   oeffneSheet(`Eigene App für ${pname(pid)}`, `
-    <p class="hint" style="margin:0 4px 12px">${n} meldet Zeiten und Auslagen selbst; ihr bestätigt sie hier. Ihre App liest nur eine verschlüsselte Kopie ihrer Einträge und Zahlungen (ohne eure Notizen) und kann eure Daten nicht verändern.</p>
+    <p class="hint" style="margin:0 4px 12px">${n} meldet Zeiten und Ausgaben selbst; ihr bestätigt sie hier. Ihre App liest nur eine verschlüsselte Kopie ihrer Einträge und Zahlungen (ohne eure Notizen) und kann eure Daten nicht verändern.</p>
     <div class="list">
       <div class="field"><label>Austausch-Repo</label><input id="xR" value="${esc(c.repo || '')}" placeholder="besitzer/repo" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
       <div class="field"><label>Token für ${n}</label><input id="xT" class="mask" value="${esc(c.maToken || '')}" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
@@ -2329,14 +2328,14 @@ function meldLoeschen(mid){
 }
 function meldAktionen(mid){
   const m = MELD.list[mid]; if(!m) return;
-  aktionen(m.art === 'auslage' ? `${T('Auslage')} · ${eur(m.cent)}` : `${aNameId(m.actId)} · ${dauerT(m.minuten)}`, [
+  aktionen(m.art === 'auslage' ? `${T('Ausgabe')} · ${eur(m.cent)}` : `${aNameId(m.actId)} · ${dauerT(m.minuten)}`, [
     {icon:'pencil', text:T(meldZustand(m) === 'abgelehnt' ? 'Erneut melden' : 'Bearbeiten'), fn:() => m.art === 'auslage' ? auslageSheet({meldId:mid}) : eintragSheet({meldId:mid})},
     {icon:'trash', text:T(meldZustand(m) === 'abgelehnt' ? 'Entfernen' : 'Löschen'), rot:true, farbe:'#B8483A', fn:() => meldLoeschen(mid)}
   ]);
 }
 function auslageSheet({meldId}){
   const alt = meldId ? MELD.list[meldId] : null, s = alt && D.meldStatus[alt.id];
-  oeffneSheet(T('Auslage melden'), `
+  oeffneSheet(T('Ausgabe melden'), `
     <div class="amtin"><input id="aA" inputmode="decimal" placeholder="0,00" value="${alt ? centZuEuro(alt.cent) : ''}"><span style="font-family:var(--round);font-size:30px;font-weight:800;color:var(--muted)">€</span></div>
     <div class="list">
       <div class="field"><label>${T('Datum')}</label><input type="date" id="aD" value="${alt ? alt.datum : tag}"></div>
@@ -2352,7 +2351,7 @@ function auslageSheet({meldId}){
       const mid = meldId || uid(), jetzt = new Date().toISOString();
       MELD.list[mid] = {id:mid, art:'auslage', datum:q('#aD').value || heute(), cent:c, notiz:q('#aN').value.trim(),
         version: alt ? (alt.version || 1) + 1 : 1, erstellt: alt ? alt.erstellt : jetzt, ...(alt ? {geaendert:jetzt} : {})};
-      saveMeld(); schliesseSheet(); renderAlles(); tick(); toast(`${T('Auslage')} ${eur(c)} · ${T('Gemeldet')}`);
+      saveMeld(); schliesseSheet(); renderAlles(); tick(); toast(`${T('Ausgabe')} ${eur(c)} · ${T('Gemeldet')}`);
     };
     if(!alt) setTimeout(() => q('#aA').focus(), 450);
   });
@@ -2366,7 +2365,7 @@ function renderMaOffen(){
     const grund = z === 'abgelehnt' && s.grund ? ` · ${T('Grund')}: ${esc(s.grund)}` : '';
     const a = m.art === 'auslage' ? {farbe:TX.auslage.farbe, icon:'receipt'} : act(m.actId);
     return `<button class="row" data-m="${m.id}"><span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
-      <span class="grow"><span class="t">${m.art === 'auslage' ? T('Auslage') : esc(aName(a))}${tagH}</span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)}${m.art === 'arbeit' ? ' · ' + dauerT(m.minuten) : ''}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}${grund}</span></span>
+      <span class="grow"><span class="t">${m.art === 'auslage' ? T('Ausgabe') : esc(aName(a))}${tagH}</span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)}${m.art === 'arbeit' ? ' · ' + dauerT(m.minuten) : ''}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}${grund}</span></span>
       <span class="amt num" style="font-weight:700${z === 'abgelehnt' ? ';text-decoration:line-through;color:var(--muted)' : ''}">${eur(meldBetrag(m))}</span></button>`; }).join('')}</div>`;
   el.onclick = e => { const r = e.target.closest('[data-m]'); if(!r) return; tick(); meldAktionen(r.dataset.m); };
 }
@@ -2413,8 +2412,10 @@ if(MA){
 /* ---------- Version & Update ---------- */
 $('appVersion').textContent = 'v' + APP_VERSION;
 $('verNum').value = 'v' + APP_VERSION; $('verDate').value = APP_BUILD;
-$('checkUpdate').onclick = async () => {
-  const inf = $('updateInfo'); inf.textContent = 'Suche …';
+/* Antippen der Versionsnummer im Kopf = nach Update suchen */
+$('appVersion').onclick = async () => {
+  const chip = $('appVersion'); if(chip.dataset.laeuft) return; chip.dataset.laeuft = 1; chip.textContent = '…'; tick();
+  const inf = {set textContent(t){ toast(t, '', null, 2600); }};
   try{
     const txt = await (await fetch('index.html?cb=' + Date.now(), {cache:'no-store'})).text();
     const m = txt.match(/const APP_VERSION = '([^']+)'/);
@@ -2424,6 +2425,7 @@ $('checkUpdate').onclick = async () => {
       setTimeout(() => location.reload(), 800);
     }else inf.textContent = m ? `Aktuell (v${APP_VERSION}, Stand ${APP_BUILD})` : 'Version konnte nicht geprüft werden.';
   }catch(err){ inf.textContent = 'Keine Verbindung – Prüfung nicht möglich.'; }
+  delete chip.dataset.laeuft; chip.textContent = 'v' + APP_VERSION;
 };
 if('serviceWorker' in navigator && location.protocol === 'https:'){
   navigator.serviceWorker.register('sw.js').then(reg => { reg.update();
