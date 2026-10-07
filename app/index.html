@@ -321,7 +321,8 @@ button.row:active{background:var(--surface2)}
 .qrbox{background:#fff;border-radius:var(--r);padding:12px;max-width:300px;margin:4px auto 0;box-shadow:var(--shadow)}
 .qrbox svg{display:block;width:100%;height:auto}
 .scan{position:relative;border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:1;max-width:340px;margin:0 auto}
-.scan video{width:100%;height:100%;object-fit:cover;display:block}
+.scan video,.scan canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.scan canvas{z-index:0}
 .scan .frame{position:absolute;inset:16%;border:3px solid #fff;border-radius:20px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
 .scan .off{position:absolute;inset:0;z-index:1;background:#000;display:grid;place-items:center;color:#fff;font-size:14px;text-align:center;padding:24px}
 /* ---------- Rollen: Arbeitgeber (Standard) / Mitarbeiter (body.ma) ---------- */
@@ -1634,7 +1635,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1918,7 +1919,9 @@ function qrScanner(){
   let strom = null, aus = false;
   const stop = () => { aus = true; if(strom) strom.getTracks().forEach(t => t.stop()); strom = null; };
   oeffneSheet('QR-Code scannen', `
-    <div class="scan"><video id="qV" playsinline muted autoplay></video><div class="frame"></div><div class="off" id="qOff">Kamera wird gestartet …</div></div>
+    <div class="scan"><video id="qV" playsinline muted autoplay></video><canvas id="qVor"></canvas><div class="frame"></div><div class="off" id="qOff">Kamera wird gestartet …</div></div>
+    <p class="hint" id="qDiag" style="text-align:center;font-size:11.5px;margin-top:6px"></p>
+    <div class="btns hidden" id="qWechsel" style="margin-top:6px"><button class="btn ghost">${icon('refresh')}Kamera wechseln</button></div>
     <p class="hint" style="text-align:center">Halte die Kamera auf den Code am anderen Gerät<br>(dort: Einstellungen → „Weiteres Gerät per QR-Code“).</p>
     <div class="btns"><button class="btn ghost" id="qCam">${icon('scan')}Foto aufnehmen</button><button class="btn ghost" id="qFoto">${icon('upload')}Bild wählen</button></div>
     <input type="file" id="qDatei" accept="image/*" class="hidden"><input type="file" id="qKamera" accept="image/*" capture="environment" class="hidden">
@@ -1941,28 +1944,43 @@ function qrScanner(){
         const txt = lies(jsQR, bild, bild.width, bild.height, 1400, true);
         if(!txt) return meld('Kein QR-Code im Bild erkannt.'); treffer(txt);
       }catch(err){ meld(err.message); } };
-    // Kamera und Bibliothek getrennt starten; jeder Schritt sichtbar, nach 12 s Hinweis auf Foto
-    const off = q('#qOff'), status = t => { if(off.isConnected) off.textContent = t; };
-    const libP = lib('scan'); libP.catch(() => {});
-    const wache = setTimeout(() => { if(!aus && off.isConnected) status(off.textContent + ' – dauert ungewöhnlich lange. Alternativ „Foto aufnehmen“ unten.'); }, 12000);
-    try{
-      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error(), {name:'NotSupported'});
+    // Kamera und Erkennung getrennt; Vorschau ueber Canvas (iOS zeigt <video> in Sheets teils schwarz);
+    // Diagnosezeile zeigt Kamera, Aufloesung, ob Bilder kommen und den Stand der Erkennung
+    const off = q('#qOff'), vor = q('#qVor'), vx = vor.getContext('2d'), diag = q('#qDiag'), v = q('#qV');
+    const st = {kam:'–', erk:'lädt …', zeit:-1, steht:0, versuche:0};
+    const status = t => { if(off.isConnected) off.textContent = t; };
+    const zeig = () => { const t = strom && strom.getVideoTracks()[0];
+      diag.textContent = `Kamera: ${st.kam}${t ? ' (' + t.readyState + ')' : ''} · ${v.videoWidth}×${v.videoHeight} · Bild: ${st.steht > 8 ? 'steht' : v.videoWidth ? 'läuft' : '–'} · Erkennung: ${st.erk}${st.versuche ? ' · ' + st.versuche + ' Prüfungen' : ''}`; };
+    let jsQR = null; lib('scan').then(f => { jsQR = f; st.erk = 'bereit'; }, err => { st.erk = 'Fehler: ' + err.message; });
+    let geraete = [], idx = -1;
+    async function starte(constraints){
+      if(strom) strom.getTracks().forEach(t => t.stop());
       status('Warte auf Kamera-Freigabe …');
-      strom = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
-    }catch(err){ clearTimeout(wache); status(err.name === 'NotAllowedError' ? 'Kein Kamerazugriff erlaubt – „Foto aufnehmen“ unten nutzen.' : 'Kamera nicht verfügbar – „Foto aufnehmen“ unten nutzen.'); return; }
-    if(aus){ strom.getTracks().forEach(t => t.stop()); return; }
-    const v = q('#qV'); v.muted = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
-    status('Starte Bild …'); v.srcObject = strom;
-    const weg = () => { if(v.videoWidth && off.isConnected){ off.remove(); clearTimeout(wache); } };
-    v.addEventListener('loadedmetadata', () => { v.play().catch(() => {}); weg(); });
-    v.addEventListener('playing', weg);
-    v.play().catch(() => {});
-    let jsQR;
-    try{ status('Lade Erkennung …'); jsQR = await libP; }
-    catch(err){ clearTimeout(wache); status(err.message); return; }
-    const schleife = () => { if(aus) return; weg();
-      if(v.readyState >= 2 && v.videoWidth){ try{ const txt = lies(jsQR, v, v.videoWidth, v.videoHeight, 640, false); if(txt && treffer(txt)) return; }catch(e){} }
-      setTimeout(() => requestAnimationFrame(schleife), 150); };
+      try{
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('nicht unterstützt'), {name:'NotSupported'});
+        strom = await navigator.mediaDevices.getUserMedia({video:constraints, audio:false});
+      }catch(err){ st.kam = 'Fehler ' + err.name; zeig(); status(err.name === 'NotAllowedError' ? 'Kein Kamerazugriff erlaubt – „Foto aufnehmen“ unten nutzen.' : 'Kamera nicht verfügbar – „Foto aufnehmen“ unten nutzen.'); return; }
+      if(aus){ strom.getTracks().forEach(t => t.stop()); return; }
+      const t = strom.getVideoTracks()[0], ein = t.getSettings ? t.getSettings() : {};
+      st.kam = ein.facingMode === 'environment' ? 'hinten' : ein.facingMode === 'user' ? 'vorne' : (t.label || 'unbekannt');
+      v.muted = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.srcObject = strom;
+      status('Starte Bild …'); v.play().catch(() => {});
+      try{ geraete = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); idx = geraete.findIndex(d => d.label === t.label); }catch(e){}
+      q('#qWechsel').classList.toggle('hidden', geraete.length < 2);
+    }
+    q('#qWechsel').onclick = () => { if(geraete.length < 2) return; idx = (idx + 1) % geraete.length; st.steht = 0; starte({deviceId:{exact:geraete[idx].deviceId}}); };
+    v.addEventListener('loadedmetadata', () => v.play().catch(() => {}));
+    const schleife = () => { if(aus) return;
+      if(v.videoWidth){
+        if(v.currentTime === st.zeit){ if(++st.steht % 10 === 9) v.play().catch(() => {}); } else { st.steht = 0; st.zeit = v.currentTime; }
+        const f = Math.min(1, 480 / Math.max(v.videoWidth, v.videoHeight)), w = Math.round(v.videoWidth * f), h = Math.round(v.videoHeight * f);
+        if(vor.width !== w || vor.height !== h){ vor.width = w; vor.height = h; }
+        vx.drawImage(v, 0, 0, w, h);
+        if(off.isConnected && v.readyState >= 2) off.remove();
+        if(jsQR){ st.versuche++; try{ const r = jsQR(vx.getImageData(0, 0, w, h).data, w, h, {inversionAttempts:'dontInvert'}); if(r && r.data && treffer(r.data)) return; }catch(e){} }
+      }
+      zeig(); setTimeout(() => requestAnimationFrame(schleife), 150); };
+    await starte({facingMode:{ideal:'environment'}});
     schleife();
   }, stop);
 }
