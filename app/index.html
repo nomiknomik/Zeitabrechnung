@@ -285,7 +285,7 @@ button.row:active{background:var(--surface2)}
 .calc span{color:var(--muted);font-size:14px}
 .calc b{font-family:var(--round);font-size:30px;font-weight:800;color:var(--terra)}
 .amtin{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:14px 0 6px}
-.amtin input{width:2.8em;max-width:80%;text-align:center;border:0;background:transparent;outline:none;font-family:var(--round);font-size:48px;font-weight:800;color:var(--text)}
+.amtin input{width:2.8em;max-width:calc(100% - 40px);min-width:0;text-align:center;border:0;background:transparent;outline:none;font-family:var(--round);font-size:48px;font-weight:800;color:var(--text)}
 .typegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .typegrid button{background:var(--surface);border-radius:16px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:600;box-shadow:var(--shadow);border:2px solid transparent}
 .typegrid button.on{border-color:var(--terra)}
@@ -373,8 +373,10 @@ button.row:active{background:var(--surface2)}
       <div class="field"><label>App-Name</label><input id="c_appName" placeholder="Zeitabrechnung"></div>
       <div class="field"><label>Dein Name</label><input id="c_geraet" placeholder="nur auf diesem Gerät"></div>
       <div class="field"><label>Darstellung</label><select id="c_theme"><option value="">Automatisch</option><option value="light">Hell</option><option value="dark">Dunkel</option></select></div>
+      <div class="field"><label>Konfetti</label><span style="flex:1"></span><input type="checkbox" class="switch" id="c_konfetti"></div>
+      <div class="field"><label>Zählanimation</label><span style="flex:1;font-size:13px;color:var(--muted)">Beträge zählen hoch</span><input type="checkbox" class="switch" id="c_zaehlen"></div>
     </div>
-    <p class="hint">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Er wird nicht synchronisiert – jedes Gerät hat seinen eigenen.</p>
+    <p class="hint">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Name, Darstellung und Effekte werden nicht synchronisiert – jedes Gerät hat eigene.</p>
 
     <h2><span>Personen</span><span class="sp"></span><button id="addPerson">Hinzufügen</button></h2>
     <div class="list" id="personList"></div>
@@ -616,6 +618,7 @@ function toast(txt, knopf, fn, ms = 4200){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), ms);
 }
 function konfetti(){
+  if(L.konfetti === false) return;
   const box = document.createElement('div'); box.className = 'confetti';
   const farben = ['#C4633A','#6E8F69','#D29B3C','#C27C88','#5F8A96','#F3DCCD'];
   for(let i = 0; i < 90; i++){
@@ -635,7 +638,7 @@ function konfetti(){
 const zaehler = new WeakMap();
 function zaehle(el, ziel, fmt = eur, ms = 900){
   const von = zaehler.get(el) ?? 0; zaehler.set(el, ziel);
-  if(von === ziel || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = fmt(ziel); return; }
+  if(von === ziel || L.zaehlen === false || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = fmt(ziel); return; }
   const t0 = performance.now();
   const schritt = t => { const p = Math.min(1, (t - t0) / ms), k = 1 - Math.pow(1 - p, 4);
     el.textContent = fmt(Math.round(von + (ziel - von) * k)); if(p < 1 && zaehler.get(el) === ziel) requestAnimationFrame(schritt); };
@@ -1075,7 +1078,7 @@ $('txQuick').onclick = e => { const b = e.target.closest('[data-t]'); if(!b) ret
 
 function buchungSheet({id, typ}){
   const alt = id ? D.txs[id] : null, p = aktPerson();
-  const st = alt ? {...alt} : {typ, cent:0, datum:heute(), personId:p.id, zahlart:'', notiz:''};
+  const st = alt ? {...alt} : {typ, cent:0, datum:heute(), personId:p.id, zahlart:'bar', notiz:''};
   const vorher = saldo(st.personId);
   if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = vorher;           // Vorschlag: alles Offene auszahlen
   let vz = alt && alt.typ === 'korrektur' ? (alt.cent < 0 ? -1 : 1) : 1;
@@ -1104,7 +1107,10 @@ function buchungSheet({id, typ}){
     };
     q('#bT').onclick = e => { const x = e.target.closest('[data-t]'); if(!x) return; tick(); st.typ = x.dataset.t; zeig(); };
     q('#bV').onclick = e => { const x = e.target.closest('[data-v]'); if(!x) return; tick(); vz = +x.dataset.v; zeig(); };
-    const breit = () => q('#bA').style.width = ((q('#bA').value.length || 4) * .6 + .25) + 'em';
+    const breit = () => { const el = q('#bA'), cs = getComputedStyle(el), cx = document.createElement('canvas').getContext('2d');
+      el.style.fontSize = ''; const max = el.parentNode.clientWidth - 40; let fs = parseFloat(getComputedStyle(el).fontSize), w;
+      do { cx.font = `${cs.fontWeight} ${fs}px ${cs.fontFamily}`; w = cx.measureText(el.value || el.placeholder).width + fs * .3; } while(w > max && (fs -= 2) > 20);
+      el.style.fontSize = fs + 'px'; el.style.width = Math.ceil(Math.min(w, max)) + 'px'; };
     q('#bA').oninput = () => { breit(); zeig(); }; breit();
     if(alt) q('#bDel').onclick = () => { const t = D.txs[id]; delete D.txs[id]; save(); schliesseSheet(); renderKonto();
       toast(`${TX[t.typ].name} gelöscht`, 'Rückgängig', () => { D.txs[id] = t; save(); renderKonto(); }); };
@@ -1292,6 +1298,7 @@ const SEIT_IMMER = '2000-01-01';
 function renderEinstellungen(){
   kopf();
   $('c_appName').value = D.cfg.appName || ''; $('c_geraet').value = L.name || ''; $('c_theme').value = L.theme || '';
+  $('c_konfetti').checked = L.konfetti !== false; $('c_zaehlen').checked = L.zaehlen !== false;
   const ps = personen(true);
   $('personList').innerHTML = ps.length ? ps.map(p => `<button class="row" data-p="${p.id}"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)">${icon('user')}</span>
     <span class="grow"><span class="t">${esc(p.name)}</span><span class="s">Saldo ${eurS(saldo(p.id))}${p.archiviert ? ' · archiviert' : ''}</span></span>${icon('chevR').replace('class="ic"', 'class="ic chev"')}</button>`).join('')
@@ -1309,6 +1316,8 @@ function renderEinstellungen(){
 $('c_appName').onchange = e => { D.cfg.appName = e.target.value.trim(); save(); kopf(); };
 $('c_geraet').onchange = e => { L.name = e.target.value.trim(); saveL(); kopf(); };
 $('c_theme').onchange = e => { L.theme = e.target.value; saveL(); thema(); };
+$('c_konfetti').onchange = e => { L.konfetti = e.target.checked; saveL(); if(L.konfetti) konfetti(); };
+$('c_zaehlen').onchange = e => { L.zaehlen = e.target.checked; saveL(); };
 $('personList').onclick = e => { const r = e.target.closest('[data-p]'); if(r) personBearbeiten(r.dataset.p, renderEinstellungen); };
 $('addPerson').onclick = () => personBearbeiten(null, renderEinstellungen);
 $('actList').onclick = e => { const r = e.target.closest('[data-a]'); if(r) taetigkeitBearbeiten(r.dataset.a, renderEinstellungen); };
@@ -1351,7 +1360,7 @@ function taetigkeitBearbeiten(id, nachher){
       <div class="field"><label>Betrag €/h</label><input id="tNS" inputmode="decimal" placeholder="0,00"></div></div>
       <div class="btns"><button class="btn ghost" id="tAdd">${icon('plus')}Satz hinzufügen</button></div>
       <p class="hint">Einträge speichern den Satz, der beim Erfassen galt. Ändern sich Sätze rückwirkend, fragt die App, ob betroffene Einträge neu berechnet werden sollen.</p>` : ''}
-    <h2>Symbol</h2><div class="icongrid" id="tI">${ACT_ICONS.map(i => `<button data-i="${i}">${icon(i)}</button>`).join('')}</div>
+    <h2>Symbol</h2><div class="icongrid" id="tI">${ACT_ICONS.map(i => `<button data-ic="${i}">${icon(i)}</button>`).join('')}</div>
     <h2>Farbe</h2><div class="colors" id="tF">${FARBEN.map(f => `<button data-f="${f}" style="--c:${f}"></button>`).join('')}</div>
     ${alt ? `<div class="list" style="margin-top:18px"><div class="field"><label>Ausblenden</label><span style="flex:1;font-size:13px;color:var(--muted)">nicht mehr als Kachel</span><input type="checkbox" class="switch" id="tA"${st.archiviert ? ' checked' : ''}></div></div>` : ''}
     <div class="btns" style="margin-top:18px">${alt && !benutzt ? `<button class="btn ghost" id="tDel" style="flex:0 0 64px;color:var(--danger)">${icon('trash')}</button>` : ''}
@@ -1362,7 +1371,7 @@ function taetigkeitBearbeiten(id, nachher){
       const cent = alt ? satzAm(st, heute()) : (euroZuCent(q('#tS').value) || 0);
       q('#tPrev').style.setProperty('--tc', st.farbe);
       q('#tPrev').innerHTML = `<span class="bubble">${icon(st.icon)}</span><span><b>${esc(st.name || 'Tätigkeit')}</b><small class="num">${eur(cent)}/h</small></span>`;
-      b.querySelectorAll('#tI button').forEach(x => { x.classList.toggle('on', x.dataset.i === st.icon); x.style.setProperty('--tc', st.farbe); });
+      b.querySelectorAll('#tI button').forEach(x => { x.classList.toggle('on', x.dataset.ic === st.icon); x.style.setProperty('--tc', st.farbe); });
       b.querySelectorAll('#tF button').forEach(x => x.classList.toggle('on', x.dataset.f === st.farbe));
       if(alt){
         const s = [...st.saetze].sort((x, y) => y.ab.localeCompare(x.ab));
@@ -1371,7 +1380,7 @@ function taetigkeitBearbeiten(id, nachher){
       }
     };
     q('#tN').oninput = zeig; if(!alt) q('#tS').oninput = zeig;
-    q('#tI').onclick = e => { const x = e.target.closest('[data-i]'); if(!x) return; tick(); st.icon = x.dataset.i; zeig(); };
+    q('#tI').onclick = e => { const x = e.target.closest('[data-ic]'); if(!x) return; tick(); st.icon = x.dataset.ic; zeig(); };
     q('#tF').onclick = e => { const x = e.target.closest('[data-f]'); if(!x) return; tick(); st.farbe = x.dataset.f; zeig(); };
     if(alt){
       q('#tSL').onclick = e => { const x = e.target.closest('[data-del]'); if(!x) return; st.saetze = st.saetze.filter(s => s.ab !== x.dataset.del); zeig(); };
@@ -1427,13 +1436,13 @@ function willkommen(){
     () => `<div class="hello"><div class="logo">${icon(st.icon)}</div><h3>Erste Tätigkeit</h3><p>Weitere legst du jederzeit in den Einstellungen an.</p>${punkte()}</div>
       <div class="list"><div class="field"><label>Bezeichnung</label><input id="wA" value="${esc(st.akt)}" placeholder="Bezeichnung"></div>
       <div class="field"><label>Stundensatz</label><input id="wS" inputmode="decimal" value="${esc(st.satz)}" placeholder="0,00 €"></div></div>
-      <h2>Symbol</h2><div class="icongrid" id="wI">${ACT_ICONS.slice(0, 12).map(i => `<button data-i="${i}" class="${i === st.icon ? 'on' : ''}" style="--tc:#C4633A">${icon(i)}</button>`).join('')}</div>
+      <h2>Symbol</h2><div class="icongrid" id="wI">${ACT_ICONS.slice(0, 12).map(i => `<button data-ic="${i}" class="${i === st.icon ? 'on' : ''}" style="--tc:#C4633A">${icon(i)}</button>`).join('')}</div>
       <div class="btns"><button class="btn" data-go="fertig">${icon('check')}Los geht’s</button></div>`
   ];
   const zeig = () => { const b = $('shBody'); b.innerHTML = seiten[schritt](); $('shTitle').textContent = '';
     b.querySelectorAll('[data-go]').forEach(x => x.onclick = () => weiter(x.dataset.go));
     const sy = b.querySelector('[data-sync]'); if(sy) sy.onclick = () => { schliesseSheet(); zeigeTab('cfg'); setTimeout(() => { $('s_repo').scrollIntoView({block:'center', behavior:'smooth'}); $('s_repo').focus(); }, 300); };
-    const wi = b.querySelector('#wI'); if(wi) wi.onclick = e => { const x = e.target.closest('[data-i]'); if(!x) return; tick(); st.akt = b.querySelector('#wA').value; st.satz = b.querySelector('#wS').value; st.icon = x.dataset.i; zeig(); };
+    const wi = b.querySelector('#wI'); if(wi) wi.onclick = e => { const x = e.target.closest('[data-ic]'); if(!x) return; tick(); st.akt = b.querySelector('#wA').value; st.satz = b.querySelector('#wS').value; st.icon = x.dataset.ic; zeig(); };
   };
   const weiter = z => {
     const b = $('shBody'); tick();
@@ -1458,8 +1467,8 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.0.0';
-const APP_BUILD   = '06.10.2026';
+const APP_VERSION = '1.0.1';
+const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
 const anzahl = d => BEREICHE.reduce((s, b) => s + Object.keys((d && d[b]) || {}).length, 0);
