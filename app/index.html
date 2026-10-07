@@ -317,6 +317,13 @@ button.row:active{background:var(--surface2)}
 .steps{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
 .steps i{width:8px;height:8px;border-radius:9px;background:var(--faint);transition:all .3s}
 .steps i.on{width:22px;background:var(--terra)}
+/* ---------- QR-Einrichtung ---------- */
+.qrbox{background:#fff;border-radius:var(--r);padding:12px;max-width:300px;margin:4px auto 0;box-shadow:var(--shadow)}
+.qrbox svg{display:block;width:100%;height:auto}
+.scan{position:relative;border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:1;max-width:340px;margin:0 auto}
+.scan video{width:100%;height:100%;object-fit:cover;display:block}
+.scan .frame{position:absolute;inset:16%;border:3px solid #fff;border-radius:20px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+.scan .off{position:absolute;inset:0;z-index:1;background:#000;display:grid;place-items:center;color:#fff;font-size:14px;text-align:center;padding:24px}
 @media (min-width:560px){.tiles{grid-template-columns:repeat(4,1fr)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -396,6 +403,10 @@ button.row:active{background:var(--surface2)}
     </div>
     <div class="btns"><button class="btn ghost" id="syncSave">Verbinden</button><button class="btn ghost" id="syncNow">Jetzt abgleichen</button></div>
     <div class="msg" id="syncMsg"></div>
+    <div class="list" style="margin-top:12px">
+      <button class="row" id="qrZeigen"><span class="bubble" style="background:var(--sage-soft);color:var(--sage-d)" data-i="qr"></span><span class="grow"><span class="t">Weiteres Gerät per QR-Code</span><span class="s">Zugangsdaten zeigen statt abtippen</span></span></button>
+      <button class="row" id="qrScannen"><span class="bubble" style="background:var(--ochre-soft);color:var(--ochre)" data-i="scan"></span><span class="grow"><span class="t">Mit QR-Code einrichten</span><span class="s">Code vom anderen Gerät scannen</span></span></button>
+    </div>
     <p class="hint">Die Daten werden vor dem Hochladen mit dem Passwort verschlüsselt (AES-256) und als Datei in einem privaten GitHub-Repo abgelegt. Jedes Gerät mit denselben drei Angaben erhält denselben Stand; Änderungen auf mehreren Geräten werden Eintrag für Eintrag zusammengeführt. <b>Ohne Passwort sind die Online-Daten verloren.</b> Token: GitHub → Settings → Developer settings → Fine-grained tokens, nur dieses Repo, „Contents: Read and write“.</p>
 
     <h2>Datensicherung</h2>
@@ -515,6 +526,8 @@ const ICONS = {
   info: P('<circle cx="12" cy="12" r="10"/>','M12 16v-4','M12 8h.01'),
   archive: P('<rect width="20" height="5" x="2" y="3" rx="1"/>','M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8','M10 12h4'),
   arrowUp: P('m5 12 7-7 7 7','M12 19V5'),
+  qr: P('<rect width="5" height="5" x="3" y="3" rx="1"/>','<rect width="5" height="5" x="16" y="3" rx="1"/>','<rect width="5" height="5" x="3" y="16" rx="1"/>','M21 16h-3a2 2 0 0 0-2 2v3','M21 21v.01','M12 7v3a2 2 0 0 1-2 2H7','M3 12h.01','M12 3h.01','M12 16v.01','M16 12h1','M21 12v.01','M12 21v-1'),
+  scan: P('M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'),
   /* --- Taetigkeits-Symbole --- */
   sparkles: P('M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z','M20 3v4','M22 5h-4','M4 17v2','M5 18H3'),
   broom: P('M20 3l-7.5 7.5','M13.5 11.5l-3-3c-2 .6-4.2 2-5.4 3.8L3 17l4 4 4.7-2.1c1.8-1.2 3.2-3.4 3.8-5.4Z','M5.5 14.5l4 4','M7.5 12.5l4 4'),
@@ -1428,7 +1441,7 @@ function willkommen(){
   const punkte = () => `<div class="steps">${[0, 1, 2].map(i => `<i class="${i === schritt ? 'on' : ''}"></i>`).join('')}</div>`;
   const seiten = [
     () => `<div class="hello"><div class="logo">${icon('clock')}</div><h3>Willkommen!</h3><p>Einsätze erfassen, Stunden abrechnen und den Kontostand im Blick behalten – auf iPhone und Mac.</p>${punkte()}
-      <button class="btn" data-go="1">Einrichten</button><button class="btn danger" data-sync style="margin-top:6px">Ich habe schon Daten auf einem anderen Gerät</button></div>`,
+      <button class="btn" data-go="1">Einrichten</button><button class="btn ghost" data-qr style="margin-top:10px">${icon('scan')}Mit QR-Code vom anderen Gerät</button><button class="btn danger" data-sync style="margin-top:6px">Ich habe schon Daten (manuell eingeben)</button></div>`,
     () => `<div class="hello"><div class="logo">${icon('users')}</div><h3>Wer seid ihr?</h3><p>Dein Name erscheint in der Begrüßung und als Kürzel an deinen Einträgen.</p>${punkte()}</div>
       <div class="list"><div class="field"><label>Dein Name</label><input id="wN" value="${esc(st.name)}" placeholder="Vorname"></div>
       <div class="field"><label>Für wen?</label><input id="wP" value="${esc(st.person)}" placeholder="Name der Person"></div></div>
@@ -1441,6 +1454,7 @@ function willkommen(){
   ];
   const zeig = () => { const b = $('shBody'); b.innerHTML = seiten[schritt](); $('shTitle').textContent = '';
     b.querySelectorAll('[data-go]').forEach(x => x.onclick = () => weiter(x.dataset.go));
+    const qr = b.querySelector('[data-qr]'); if(qr) qr.onclick = () => qrScanner();
     const sy = b.querySelector('[data-sync]'); if(sy) sy.onclick = () => { schliesseSheet(); zeigeTab('cfg'); setTimeout(() => { $('s_repo').scrollIntoView({block:'center', behavior:'smooth'}); $('s_repo').focus(); }, 300); };
     const wi = b.querySelector('#wI'); if(wi) wi.onclick = e => { const x = e.target.closest('[data-ic]'); if(!x) return; tick(); st.akt = b.querySelector('#wA').value; st.satz = b.querySelector('#wS').value; st.icon = x.dataset.ic; zeig(); };
   };
@@ -1467,7 +1481,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1685,6 +1699,101 @@ addEventListener('offline', syncStatus);
 document.addEventListener('visibilitychange', () => { lokaleKopie(); abgleichen(false); if(!document.hidden) renderAlles(); });
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
+/* --- Einrichtung per QR-Code: Repo, Token, Passwort als Link #za=… (base64url-JSON) ---
+   Bibliotheken nur bei Bedarf, mit Integritaetspruefung (SRI) */
+const LIBS = {
+  qr:  {src:'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js', sri:'sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k', glob:'qrcode'},
+  scan:{src:'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js', sri:'sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx', glob:'jsQR'}
+};
+function lib(n){
+  const l = LIBS[n]; if(window[l.glob]) return Promise.resolve(window[l.glob]);
+  return l.p ||= new Promise((ok, fail) => { const s = document.createElement('script');
+    s.src = l.src; s.integrity = l.sri; s.crossOrigin = 'anonymous';
+    s.onload = () => ok(window[l.glob]); s.onerror = () => { l.p = null; fail(new Error('Konnte nicht geladen werden – Internetverbindung?')); };
+    document.head.appendChild(s); });
+}
+const b64url = s => utf8b64(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64url = s => new TextDecoder().decode(unb64(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)));
+const einrichtLink = obj => location.origin + location.pathname + '#za=' + b64url(JSON.stringify(obj));
+function einrichtLesen(txt){
+  const m = String(txt || '').trim().match(/za=([\w-]+)/);
+  try{ const o = JSON.parse(m ? unb64url(m[1]) : txt);
+    if(o && o.v === 1 && o.r && o.t && o.p) return o; }catch(e){}
+  return null;
+}
+async function qrSvg(text){
+  const qrcode = await lib('qr'), q = qrcode(0, 'M'); q.addData(text, 'Byte'); q.make();
+  const n = q.getModuleCount(), r = 4; let d = '';
+  for(let y = 0; y < n; y++) for(let x = 0; x < n; x++) if(q.isDark(y, x)) d += `M${x + r} ${y + r}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n + 2 * r} ${n + 2 * r}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+function qrZeigen(){
+  if(!syncAktiv()) return toast('Zuerst den Sync auf diesem Gerät einrichten');
+  oeffneSheet('Gerät hinzufügen', `
+    <p class="hint" style="margin:0 4px 12px">Der Code enthält Repo, Token und Passwort. Zeige ihn nur dem anderen Gerät – kein Foto oder Screenshot weitergeben.</p>
+    <div id="qrOut"><div class="btns"><button class="btn" id="qrGo">${icon('qr')}Code anzeigen</button></div></div>
+    <p class="hint">Am anderen Gerät: App öffnen → „Mit QR-Code vom anderen Gerät“ (oder Einstellungen → „Mit QR-Code einrichten“) und diesen Code scannen.</p>`, b => {
+    b.querySelector('#qrGo').onclick = async () => {
+      const out = b.querySelector('#qrOut'); out.innerHTML = '<p class="hint" style="text-align:center">Erzeuge Code …</p>';
+      try{ out.innerHTML = `<div class="qrbox">${await qrSvg(einrichtLink({v:1, r:sync.repo, t:sync.token, p:sync.pw}))}</div>`; }
+      catch(err){ out.innerHTML = `<p class="msg"><span class="no">${esc(err.message)}</span></p>`; }
+    };
+  });
+}
+function qrScanner(){
+  let strom = null, aus = false;
+  const stop = () => { aus = true; if(strom) strom.getTracks().forEach(t => t.stop()); strom = null; };
+  oeffneSheet('QR-Code scannen', `
+    <div class="scan"><video id="qV" playsinline muted autoplay></video><div class="frame"></div><div class="off" id="qOff">Kamera wird gestartet …</div></div>
+    <p class="hint" style="text-align:center">Halte die Kamera auf den Code am anderen Gerät<br>(dort: Einstellungen → „Weiteres Gerät per QR-Code“).</p>
+    <div class="btns"><button class="btn ghost" id="qFoto">${icon('upload')}Foto vom Code wählen</button></div>
+    <input type="file" id="qDatei" accept="image/*" class="hidden">
+    <div class="list" style="margin-top:12px"><div class="field"><label>Oder Link</label><input id="qTxt" placeholder="einfügen" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
+    <div class="msg" id="qMsg"></div>`, async b => {
+    const q = s => b.querySelector(s), meld = t => q('#qMsg').innerHTML = `<span class="no">${esc(t)}</span>`;
+    const treffer = txt => { const o = einrichtLesen(txt); if(!o){ meld('Das ist kein Einrichtungs-Code dieser App.'); return false; }
+      stop(); schliesseSheet(); setTimeout(() => einrichten(o), 200); return true; };
+    const leinwand = document.createElement('canvas'), cx = leinwand.getContext('2d', {willReadFrequently:true});
+    const lies = (jsQR, quelle, w, h, max, beide) => { const f = Math.min(1, max / Math.max(w, h));
+      leinwand.width = Math.round(w * f); leinwand.height = Math.round(h * f); cx.drawImage(quelle, 0, 0, leinwand.width, leinwand.height);
+      const r = jsQR(cx.getImageData(0, 0, leinwand.width, leinwand.height).data, leinwand.width, leinwand.height, {inversionAttempts: beide ? 'attemptBoth' : 'dontInvert'});
+      return r && r.data; };
+    q('#qTxt').onchange = e => treffer(e.target.value);
+    q('#qFoto').onclick = () => q('#qDatei').click();
+    q('#qDatei').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+      try{ const jsQR = await lib('scan'), bild = await createImageBitmap(f);
+        const txt = lies(jsQR, bild, bild.width, bild.height, 1400, true);
+        if(!txt) return meld('Kein QR-Code im Bild erkannt.'); treffer(txt);
+      }catch(err){ meld(err.message); } };
+    let jsQR;
+    try{ [jsQR, strom] = await Promise.all([lib('scan'), navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})]); }
+    catch(err){ q('#qOff').textContent = err.name === 'NotAllowedError' ? 'Kein Kamerazugriff erlaubt – Foto wählen oder Link einfügen.' : err.message && /Internet/.test(err.message) ? err.message : 'Kamera nicht verfügbar – Foto wählen oder Link einfügen.'; return; }
+    if(aus){ strom.getTracks().forEach(t => t.stop()); return; }
+    const v = q('#qV'); v.srcObject = strom; await v.play().catch(() => {}); q('#qOff').remove();
+    const schleife = () => { if(aus) return;
+      if(v.readyState >= 2 && v.videoWidth){ const txt = lies(jsQR, v, v.videoWidth, v.videoHeight, 640, false); if(txt && treffer(txt)) return; }
+      setTimeout(() => requestAnimationFrame(schleife), 120); };
+    schleife();
+  }, stop);
+}
+async function einrichten(o){
+  if(o.rolle) return toast('Dieser Code ist für eine neuere App-Version – bitte zuerst aktualisieren');
+  if(syncAktiv() && (o.r !== sync.repo || o.p !== sync.pw) && !confirm(`Dieses Gerät ist schon mit „${sync.repo}“ verbunden.\n\nAuf die Daten aus dem QR-Code umstellen?`)) return;
+  sync = {repo:o.r, token:o.t, pw:o.p}; saveSync();
+  $('s_repo').value = o.r; $('s_token').value = o.t; $('s_pw').value = o.p;
+  zeigeTab('cfg'); setTimeout(() => $('syncMsg').scrollIntoView({block:'center', behavior:'smooth'}), 60);
+  await abgleichen(true);
+  if(syncFehler) return;
+  renderAlles();
+  if(!L.name) oeffneSheet('Fast fertig', `<div class="hello"><div class="logo">${icon('user')}</div><h3>Wie heißt du?</h3><p>Erscheint in der Begrüßung und als Kürzel an deinen Einträgen.</p></div>
+    <div class="list"><div class="field"><label>Dein Name</label><input id="qN" placeholder="Vorname"></div></div>
+    <div class="btns"><button class="btn" id="qNOk">${icon('check')}Fertig</button></div>`, b => {
+    b.querySelector('#qNOk').onclick = () => { L.name = b.querySelector('#qN').value.trim(); saveL(); schliesseSheet(); zeigeTab('erf'); konfetti(); };
+  });
+}
+$('qrZeigen').onclick = qrZeigen;
+$('qrScannen').onclick = qrScanner;
+
 /* ---------- Version & Update ---------- */
 $('appVersion').textContent = 'v' + APP_VERSION;
 $('verNum').value = 'v' + APP_VERSION; $('verDate').value = APP_BUILD;
@@ -1713,8 +1822,10 @@ thema();
 renderErfassen();
 syncStatus();
 lokaleKopie();
-abgleichen(false);
-if(!anzahl(D) && !syncAktiv()) setTimeout(willkommen, 500);
+const startCode = location.hash.startsWith('#za=') ? einrichtLesen(location.hash) : null;
+if(location.hash.startsWith('#za=')) history.replaceState(null, '', location.pathname + location.search);   // Zugangsdaten nicht in der Adresse lassen
+if(startCode) setTimeout(() => einrichten(startCode), 300);
+else{ abgleichen(false); if(!anzahl(D) && !syncAktiv()) setTimeout(willkommen, 500); }
 </script>
 </body>
 </html>
