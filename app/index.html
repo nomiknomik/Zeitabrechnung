@@ -359,6 +359,8 @@ body:not(.ma) .nur-ma{display:none!important}
 <header id="hdr">
   <div class="ttl"><small id="greet">Hallo</small><b id="hTitle">Zeitabrechnung</b></div>
   <span class="vchip" id="appVersion">v–</span>
+  <button class="hbtn hidden" id="undoBtn" aria-label="Rückgängig" title="Rückgängig"></button>
+  <button class="hbtn hidden" id="redoBtn" aria-label="Wiederholen" title="Wiederholen"></button>
   <button class="hbtn" id="syncBtn" data-st="off" aria-label="Sync"></button>
 </header>
 
@@ -598,6 +600,7 @@ const ICONS = {
   copy: P('<rect x="8" y="8" width="14" height="14" rx="2"/>','M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2'),
   trash: P('M3 6h18','M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6','M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'),
   undo: P('M3 7v6h6','M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13'),
+  redo: P('M21 7v6h-6','M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7'),
   repeat: P('m17 2 4 4-4 4','M3 11v-1a4 4 0 0 1 4-4h14','m7 22-4-4 4-4','M21 13v1a4 4 0 0 1-4 4H3'),
   layers: P('M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z','m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65','m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'),
   bookmark: P('m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z','M12 7v6','M9 10h6'),
@@ -662,8 +665,15 @@ const leer = () => Object.fromEntries(BEREICHE.map(b => [b, {}]));
 let L = load(LS.local, {});
 const MA = L.rolle === 'ma';
 let D = Object.assign(leer(), MA ? {} : load(LS.data, {}));
+/* Verlauf fuer Rueckgaengig/Wiederholen: bis zu 10 Staende von D (nur im Speicher, nicht synchronisiert).
+   Wird geleert, sobald Daten von aussen kommen (Sync, Backup), damit nichts Fremdes zurueckgedreht wird. */
+const VERLAUF = {zurueck:[], vor:[], stand:null, MAX:10};
 function save(){
   if(MA) return;                                   // Mitarbeiter-App veraendert D nie
+  const neu = JSON.stringify(D);
+  if(VERLAUF.stand && neu !== VERLAUF.stand && !VERLAUF.aus){
+    VERLAUF.zurueck.push(VERLAUF.stand); if(VERLAUF.zurueck.length > VERLAUF.MAX) VERLAUF.zurueck.shift(); VERLAUF.vor = []; }
+  VERLAUF.stand = neu; if(typeof verlaufKnoepfe === 'function') verlaufKnoepfe();
   localStorage.setItem(LS.data, JSON.stringify(D));
   localStorage.setItem(LS.dirty, '1');
   if(typeof syncNachAenderung === 'function') syncNachAenderung();
@@ -914,8 +924,25 @@ function renderSchnell(es, pid){
   $('quick').innerHTML = chips.join('');
   $('quick').style.display = chips.length ? '' : 'none';
 }
+/* Vorlage gedrueckt halten (oder Rechtsklick) = Aktionen */
+let quickHalten = null, quickGehalten = 0;
+$('quick').addEventListener('touchstart', e => { const b = e.target.closest('[data-q="tpl"]'); if(!b) return;
+  quickHalten = setTimeout(() => { quickGehalten = Date.now(); tick(); vorlageAktionen(b.dataset.id); }, 480); }, {passive:true});
+['touchmove', 'touchcancel'].forEach(t => $('quick').addEventListener(t, () => clearTimeout(quickHalten), {passive:true}));
+$('quick').addEventListener('touchend', e => { clearTimeout(quickHalten); if(Date.now() - quickGehalten < 600) e.preventDefault(); });
+$('quick').addEventListener('contextmenu', e => { const b = e.target.closest('[data-q="tpl"]'); if(!b) return; e.preventDefault(); vorlageAktionen(b.dataset.id); });
+function vorlageAktionen(id){
+  const t = D.tpls[id]; if(!t) return;
+  aktionen(`Vorlage „${t.name}“`, [
+    {icon:'layers', text:'Anwenden', fn:() => uebernehmePosten(t.posten, t.name)},
+    {icon:'pencil', text:'Umbenennen …', fn:() => vorlageBearbeiten(id)},
+    {icon:'trash', text:'Löschen', rot:true, farbe:'#B8483A', fn:() => { delete D.tpls[id]; save(); renderErfassen(); toast(`Vorlage „${t.name}“ gelöscht`, 'Rückgängig', () => { D.tpls[id] = t; save(); renderErfassen(); }); }}
+  ]);
+}
 $('quick').onclick = e => {
-  const b = e.target.closest('.chip'); if(!b) return; tick();
+  const b = e.target.closest('.chip'); if(!b) return;
+  if(Date.now() - quickGehalten < 600) return;          // Nach-Klick nach Halten ignorieren
+  tick();
   const pid = aktPerson()?.id;
   if(b.dataset.q === 'last') uebernehmePosten(tagEintraege(b.dataset.d, pid).map(x => ({actId:x.actId, start:x.start, minuten:x.minuten, notiz:x.notiz})), `Wie am ${dm(b.dataset.d)}`);
   else if(b.dataset.q === 'tpl'){ const t = D.tpls[b.dataset.id]; t && uebernehmePosten(t.posten, t.name); }
@@ -1696,17 +1723,30 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.3.4';
+const APP_VERSION = '1.3.5';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
 const anzahl = d => BEREICHE.reduce((s, b) => s + Object.keys((d && d[b]) || {}).length, 0);
 function uebernehmeBackup(data){
-  D = kern(data);
+  D = kern(data); VERLAUF.zurueck = []; VERLAUF.vor = []; VERLAUF.stand = null;
   if(L.person && !D.persons[L.person]) { delete L.person; saveL(); }
   save(); renderAlles();
 }
 function renderAlles(){ kopf(); ({erf:renderErfassen, kto:renderKonto, aus:renderAuswertung, cfg:renderEinstellungen})[tab](); }
+function verlaufKnoepfe(){
+  $('undoBtn').classList.toggle('hidden', MA || !VERLAUF.zurueck.length);
+  $('redoBtn').classList.toggle('hidden', MA || !VERLAUF.vor.length);
+}
+function verlaufSchritt(von, nach, text){
+  if(!von.length) return;
+  nach.push(VERLAUF.stand); D = Object.assign(leer(), JSON.parse(von.pop()));
+  VERLAUF.aus = true; save(); VERLAUF.aus = false;
+  renderAlles(); tick(); toast(`${text} (${VERLAUF.zurueck.length} zurück, ${VERLAUF.vor.length} vor möglich)`, '', null, 2200);
+}
+$('undoBtn').innerHTML = icon('undo'); $('redoBtn').innerHTML = icon('redo');
+$('undoBtn').onclick = () => verlaufSchritt(VERLAUF.zurueck, VERLAUF.vor, 'Rückgängig');
+$('redoBtn').onclick = () => verlaufSchritt(VERLAUF.vor, VERLAUF.zurueck, 'Wiederholt');
 
 const SNAP_MAX = 14;
 function idb(){ return new Promise((ok, fail) => { const r = indexedDB.open('za_backup', 1);
@@ -2402,6 +2442,7 @@ hydrate();
 thema();
 spracheAnwenden();
 renderErfassen();
+VERLAUF.stand = MA ? null : JSON.stringify(D);
 syncStatus();
 lokaleKopie();
 const startCode = location.hash.startsWith('#za=') ? einrichtLesen(location.hash) : null;
