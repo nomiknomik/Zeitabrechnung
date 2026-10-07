@@ -296,7 +296,8 @@ button.row:active{background:var(--surface2)}
 .calc span{color:var(--muted);font-size:14px}
 .calc b{font-family:var(--round);font-size:30px;font-weight:800;color:var(--terra)}
 .amtin{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:14px 0 6px}
-.amtin input{width:2.8em;max-width:calc(100% - 40px);min-width:0;text-align:center;border:0;background:transparent;outline:none;font-family:var(--round);font-size:48px;font-weight:800;color:var(--text)}
+.amtin > span{flex:1 1 0;text-align:left}
+.amtin input{flex:1 1 0;width:0;min-width:0;text-align:right;border:0;background:transparent;outline:none;font-family:var(--round);font-size:48px;font-weight:800;color:var(--text)}
 .typegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .typegrid button{background:var(--surface);border-radius:16px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:600;box-shadow:var(--shadow);border:2px solid transparent}
 .typegrid button.on{border-color:var(--terra)}
@@ -406,7 +407,6 @@ body:not(.ma) .nur-ma{display:none!important}
       <div class="field"><label data-t>Dein Name</label><input id="c_geraet" placeholder="nur auf diesem Gerät" data-tp></div>
       <div class="field nur-ma"><label data-t>Sprache</label><select id="c_sprache"><option value="de">Deutsch</option><option value="ru">Русский</option></select></div>
       <div class="field"><label data-t>Darstellung</label><select id="c_theme"><option value="" data-t>Automatisch</option><option value="light" data-t>Hell</option><option value="dark" data-t>Dunkel</option></select></div>
-      <div class="field"><label data-t>Konfetti</label><span style="flex:1"></span><input type="checkbox" class="switch" id="c_konfetti"></div>
       <div class="field"><label data-t>Zahlen</label><select id="c_zahlen"><option value="rollen" data-t>Rollen</option><option value="zaehlen" data-t>Hochzählen</option><option value="aus" data-t>Ohne Animation</option></select></div>
     </div>
     <p class="hint nur-ag">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Name, Darstellung und Effekte werden nicht synchronisiert – jedes Gerät hat eigene.</p>
@@ -731,7 +731,7 @@ function toast(txt, knopf, fn, ms = 4200){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), ms);
 }
 function konfetti(){
-  if(L.konfetti === false) return;
+  return;                                          // abgeschaltet (Wunsch); Code bleibt fuer spaeter
   const box = document.createElement('div'); box.className = 'confetti';
   const farben = ['#C4633A','#6E8F69','#D29B3C','#C27C88','#5F8A96','#F3DCCD'];
   for(let i = 0; i < 90; i++){
@@ -1285,7 +1285,7 @@ function buchungSheet({id, typ, pruef}){
   const alt = id ? D.txs[id] : null, p = aktPerson(), pm = pruef && pruef.m;
   const st = alt ? {...alt} : pm ? {typ:'auslage', cent:pm.cent, datum:pm.datum, personId:pruef.pid, zahlart:'bar', notiz:''} : {typ, cent:0, datum:heute(), personId:p.id, zahlart:'bar', notiz:''};
   const vorher = saldo(st.personId);
-  if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = vorher;           // Vorschlag: alles Offene auszahlen
+  if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = Math.max(100, Math.round(vorher / 100) * 100);   // Vorschlag: Offenes auf volle Euro gerundet
   let vz = alt && alt.typ === 'korrektur' ? (alt.cent < 0 ? -1 : 1) : 1;
   oeffneSheet(pm ? 'Auslage prüfen' : alt ? 'Buchung bearbeiten' : TX[st.typ].name, `
     ${pm ? `<p class="hint" style="margin:0 4px 12px">${esc(pname(pruef.pid))} hat gemeldet: ${eur(pm.cent)} am ${dm(pm.datum)}${pm.notiz ? ` · „${esc(pm.notiz)}“` : ''}</p>` : ''}
@@ -1313,11 +1313,13 @@ function buchungSheet({id, typ, pruef}){
     };
     q('#bT').onclick = e => { const x = e.target.closest('[data-t]'); if(!x) return; tick(); st.typ = x.dataset.t; zeig(); };
     q('#bV').onclick = e => { const x = e.target.closest('[data-v]'); if(!x) return; tick(); vz = +x.dataset.v; zeig(); };
+    // Eingabefeld fuellt die linke Haelfte (rechtsbuendig vor dem €); nur die Schrift wird bei langen Betraegen kleiner.
+    // Grosszuegiger Puffer, weil iOS die gerundete Schrift anders misst als die Canvas-Messung.
     const breit = () => { const el = q('#bA'), cs = getComputedStyle(el), cx = document.createElement('canvas').getContext('2d');
-      el.style.fontSize = ''; const max = el.parentNode.clientWidth - 40; let fs = parseFloat(getComputedStyle(el).fontSize), w;
-      do { cx.font = `${cs.fontWeight} ${fs}px ${cs.fontFamily}`; w = cx.measureText(el.value || el.placeholder).width + fs * .3; } while(w > max && (fs -= 2) > 20);
-      el.style.fontSize = fs + 'px'; el.style.width = Math.ceil(Math.min(w, max)) + 'px'; };
-    q('#bA').oninput = () => { breit(); zeig(); }; breit();
+      el.style.fontSize = ''; const max = el.clientWidth || el.parentNode.clientWidth / 2; let fs = parseFloat(getComputedStyle(el).fontSize), w;
+      do { cx.font = `${cs.fontWeight} ${fs}px ${cs.fontFamily}`; w = cx.measureText(el.value || el.placeholder).width * 1.2 + 8; } while(w > max && (fs -= 2) > 18);
+      el.style.fontSize = fs + 'px'; };
+    q('#bA').oninput = () => { breit(); zeig(); }; breit(); requestAnimationFrame(breit); setTimeout(breit, 500);
     if(alt) q('#bDel').onclick = () => { const t = D.txs[id]; delete D.txs[id]; save(); schliesseSheet(); renderKonto();
       toast(`${TX[t.typ].name} gelöscht`, 'Rückgängig', () => { D.txs[id] = t; save(); renderKonto(); }); };
     q('#bOk').onclick = () => {
@@ -1505,7 +1507,7 @@ const SEIT_IMMER = '2000-01-01';
 function renderEinstellungen(){
   kopf();
   $('c_appName').value = D.cfg.appName || ''; $('c_geraet').value = L.name || ''; $('c_theme').value = L.theme || '';
-  $('c_konfetti').checked = L.konfetti !== false; $('c_zahlen').value = zahlModus();
+  $('c_zahlen').value = zahlModus();
   const ps = personen(true);
   $('personList').innerHTML = ps.length ? ps.map(p => `<button class="row" data-p="${p.id}"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)">${icon('user')}</span>
     <span class="grow"><span class="t">${esc(p.name)}</span><span class="s">Saldo ${eurS(saldo(p.id))}${p.archiviert ? ' · archiviert' : ''}</span></span>${icon('chevR').replace('class="ic"', 'class="ic chev"')}</button>`).join('')
@@ -1529,7 +1531,6 @@ $('c_sprache').onchange = e => { L.sprache = e.target.value; saveL(); spracheAnw
 $('c_appName').onchange = e => { D.cfg.appName = e.target.value.trim(); save(); kopf(); };
 $('c_geraet').onchange = e => { L.name = e.target.value.trim(); saveL(); kopf(); };
 $('c_theme').onchange = e => { L.theme = e.target.value; saveL(); thema(); };
-$('c_konfetti').onchange = e => { L.konfetti = e.target.checked; saveL(); if(L.konfetti) konfetti(); };
 $('c_zahlen').onchange = e => { L.zahlen = e.target.value; delete L.zaehlen; saveL(); };
 $('personList').onclick = e => { const r = e.target.closest('[data-p]'); if(r) personBearbeiten(r.dataset.p, renderEinstellungen); };
 $('addPerson').onclick = () => personBearbeiten(null, renderEinstellungen);
@@ -1685,7 +1686,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
