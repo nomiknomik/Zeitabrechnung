@@ -57,6 +57,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
 .ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
 .num{font-family:var(--round);font-variant-numeric:tabular-nums}
+.roll{display:inline-block;height:var(--lh);line-height:var(--lh);overflow:hidden;vertical-align:top}
+.roll > span{display:block;transition:transform .45s cubic-bezier(.3,.7,.3,1)}
+.roll > span.ab{transform:translateY(calc(-1 * var(--lh)))}
+.roll > span.auf.los{transform:translateY(calc(-1 * var(--lh)))} .roll > span.ab.los{transform:none}
+.roll i{display:block;height:var(--lh);font-style:normal;text-align:center}
 .hidden{display:none!important}
 
 /* ---------- Kopf ---------- */
@@ -400,7 +405,7 @@ body:not(.ma) .nur-ma{display:none!important}
       <div class="field nur-ma"><label data-t>Sprache</label><select id="c_sprache"><option value="de">Deutsch</option><option value="ru">Русский</option></select></div>
       <div class="field"><label data-t>Darstellung</label><select id="c_theme"><option value="" data-t>Automatisch</option><option value="light" data-t>Hell</option><option value="dark" data-t>Dunkel</option></select></div>
       <div class="field"><label data-t>Konfetti</label><span style="flex:1"></span><input type="checkbox" class="switch" id="c_konfetti"></div>
-      <div class="field"><label data-t>Zählanimation</label><span style="flex:1;font-size:13px;color:var(--muted)" data-t>Beträge zählen hoch</span><input type="checkbox" class="switch" id="c_zaehlen"></div>
+      <div class="field"><label data-t>Zahlen</label><select id="c_zahlen"><option value="rollen" data-t>Rollen</option><option value="zaehlen" data-t>Hochzählen</option><option value="aus" data-t>Ohne Animation</option></select></div>
     </div>
     <p class="hint nur-ag">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Name, Darstellung und Effekte werden nicht synchronisiert – jedes Gerät hat eigene.</p>
 
@@ -521,7 +526,7 @@ const RU = {
   'Zeitraum als CSV exportieren':'Экспорт периода в CSV','Keine Einträge in diesem Zeitraum.':'Нет записей за этот период.','Noch keine Daten.':'Пока нет данных.',
   'Quartal ':'квартал ','KW':'Нед.',
   'Allgemein':'Общее','Dein Name':'Твоё имя','Darstellung':'Оформление','Automatisch':'Автоматически','Hell':'Светлое','Dunkel':'Тёмное',
-  'Konfetti':'Конфетти','Zählanimation':'Анимация сумм','Beträge zählen hoch':'Суммы считаются вверх','Sprache':'Язык',
+  'Konfetti':'Конфетти','Zahlen':'Числа','Rollen':'Прокрутка','Hochzählen':'Счётчик','Ohne Animation':'Без анимации','Sprache':'Язык',
   'Verbindung':'Подключение','App':'Приложение','Version':'Версия','Stand':'Сборка','Nach Update suchen':'Проверить обновление','lädt die neueste Version':'загружает последнюю версию',
   'Zugang entfernen':'Удалить доступ','Jetzt abgleichen':'Синхронизировать',
   'offen ·':'ждёт подтверждения ·','Offen':'Ждёт','Bestätigt':'Подтверждено','Abgelehnt':'Отклонено','geändert':'изменено',
@@ -739,15 +744,29 @@ function konfetti(){
   }
   document.body.appendChild(box); setTimeout(() => box.remove(), 4000);
 }
-/* Zaehlanimation fuer Betraege */
+/* Zahlen-Animation fuer Betraege: 'rollen' (mechanischer Zaehler), 'zaehlen' (hochzaehlen) oder 'aus' */
 const zaehler = new WeakMap();
+const zahlModus = () => L.zahlen || (L.zaehlen === false ? 'aus' : 'rollen');
 function zaehle(el, ziel, fmt = eur, ms = 900){
   const von = zaehler.get(el) ?? 0; zaehler.set(el, ziel);
-  if(von === ziel || L.zaehlen === false || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = fmt(ziel); return; }
+  if(von === ziel || zahlModus() === 'aus' || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = fmt(ziel); return; }
+  if(zahlModus() === 'rollen') return rolle(el, fmt(von), fmt(ziel), ziel > von);
   const t0 = performance.now();
   const schritt = t => { const p = Math.min(1, (t - t0) / ms), k = 1 - Math.pow(1 - p, 4);
     el.textContent = fmt(Math.round(von + (ziel - von) * k)); if(p < 1 && zaehler.get(el) === ziel) requestAnimationFrame(schritt); };
   requestAnimationFrame(schritt);
+}
+/* Nur geaenderte Stellen rollen eine Zeile weiter (hoch bei groesser, runter bei kleiner) */
+function rolle(el, alt, neu, hoch){
+  const n = Math.max(alt.length, neu.length), a = alt.padStart(n, ' '), b = neu.padStart(n, ' ');
+  const z = c => c === ' ' ? '' : esc(c);
+  el.setAttribute('aria-label', neu);
+  const cs = getComputedStyle(el), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;   // Zeilenhoehe wie der umgebende Text
+  el.style.setProperty('--lh', lh + 'px');
+  el.innerHTML = [...b].map((c, i) => c === a[i] ? z(c)
+    : `<span class="roll" aria-hidden="true"><span class="${hoch ? 'auf' : 'ab'}"><i>${hoch ? z(a[i]) : z(c)}</i><i>${hoch ? z(c) : z(a[i])}</i></span></span>`).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => el.querySelectorAll('.roll > span').forEach(s => s.classList.add('los'))));
+  clearTimeout(el._rollT); el._rollT = setTimeout(() => { if(el.getAttribute('aria-label') === neu){ el.textContent = neu; el.removeAttribute('aria-label'); } }, 600);
 }
 
 /* =====================================================================
@@ -1459,7 +1478,7 @@ const SEIT_IMMER = '2000-01-01';
 function renderEinstellungen(){
   kopf();
   $('c_appName').value = D.cfg.appName || ''; $('c_geraet').value = L.name || ''; $('c_theme').value = L.theme || '';
-  $('c_konfetti').checked = L.konfetti !== false; $('c_zaehlen').checked = L.zaehlen !== false;
+  $('c_konfetti').checked = L.konfetti !== false; $('c_zahlen').value = zahlModus();
   const ps = personen(true);
   $('personList').innerHTML = ps.length ? ps.map(p => `<button class="row" data-p="${p.id}"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)">${icon('user')}</span>
     <span class="grow"><span class="t">${esc(p.name)}</span><span class="s">Saldo ${eurS(saldo(p.id))}${p.archiviert ? ' · archiviert' : ''}</span></span>${icon('chevR').replace('class="ic"', 'class="ic chev"')}</button>`).join('')
@@ -1484,7 +1503,7 @@ $('c_appName').onchange = e => { D.cfg.appName = e.target.value.trim(); save(); 
 $('c_geraet').onchange = e => { L.name = e.target.value.trim(); saveL(); kopf(); };
 $('c_theme').onchange = e => { L.theme = e.target.value; saveL(); thema(); };
 $('c_konfetti').onchange = e => { L.konfetti = e.target.checked; saveL(); if(L.konfetti) konfetti(); };
-$('c_zaehlen').onchange = e => { L.zaehlen = e.target.checked; saveL(); };
+$('c_zahlen').onchange = e => { L.zahlen = e.target.value; delete L.zaehlen; saveL(); };
 $('personList').onclick = e => { const r = e.target.closest('[data-p]'); if(r) personBearbeiten(r.dataset.p, renderEinstellungen); };
 $('addPerson').onclick = () => personBearbeiten(null, renderEinstellungen);
 $('actList').onclick = e => { const r = e.target.closest('[data-a]'); if(r) taetigkeitBearbeiten(r.dataset.a, renderEinstellungen); };
@@ -1639,7 +1658,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.4';
+const APP_VERSION = '1.2.5';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
