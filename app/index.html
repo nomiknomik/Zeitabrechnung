@@ -412,7 +412,6 @@ body:not(.ma) .nur-ma{display:none!important}
       <div class="field"><label data-t>Dein Name</label><input id="c_geraet" placeholder="nur auf diesem Gerät" data-tp></div>
       <div class="field nur-ma"><label data-t>Sprache</label><select id="c_sprache"><option value="de">Deutsch</option><option value="ru">Русский</option></select></div>
       <div class="field"><label data-t>Darstellung</label><select id="c_theme"><option value="" data-t>Automatisch</option><option value="light" data-t>Hell</option><option value="dark" data-t>Dunkel</option></select></div>
-      <div class="field"><label data-t>Zahlen</label><select id="c_zahlen"><option value="rollen" data-t>Rollen</option><option value="zaehlen" data-t>Hochzählen</option><option value="aus" data-t>Ohne Animation</option></select></div>
     </div>
     <p class="hint nur-ag">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Name, Darstellung und Effekte werden nicht synchronisiert – jedes Gerät hat eigene.</p>
 
@@ -763,7 +762,7 @@ function konfetti(){
 }
 /* Zahlen-Animation fuer Betraege: 'rollen' (mechanischer Zaehler), 'zaehlen' (hochzaehlen) oder 'aus' */
 const zaehler = new WeakMap();
-const zahlModus = () => L.zahlen || (L.zaehlen === false ? 'aus' : 'rollen');
+const zahlModus = () => 'rollen';                 // fest: Zahlen rollen (Auswahl entfernt)
 /* Animiert nur echte Aenderungen: der letzte Wert wird je Schluessel (z. B. Tag, Person) gemerkt,
    erstes Anzeigen oder Tab-Wechsel ohne Aenderung zeigt die Zahl ruhig an */
 const zahlStand = new Map();
@@ -936,7 +935,7 @@ function vorlageAktionen(id){
   aktionen(`Vorlage „${t.name}“`, [
     {icon:'layers', text:'Anwenden', fn:() => uebernehmePosten(t.posten, t.name)},
     {icon:'pencil', text:'Umbenennen …', fn:() => vorlageBearbeiten(id)},
-    {icon:'trash', text:'Löschen', rot:true, farbe:'#B8483A', fn:() => { delete D.tpls[id]; save(); renderErfassen(); toast(`Vorlage „${t.name}“ gelöscht`, 'Rückgängig', () => { D.tpls[id] = t; save(); renderErfassen(); }); }}
+    {icon:'trash', text:'Löschen', rot:true, farbe:'#B8483A', fn:() => { delete D.tpls[id]; save(); renderErfassen();  }}
   ]);
 }
 $('quick').onclick = e => {
@@ -969,7 +968,7 @@ function uebernehmePosten(posten, wie){
   }
   if(!neu.length) return;
   neuIds = new Set(neu); save(); renderErfassen();
-  toast(`${neu.length} ${neu.length === 1 ? 'Eintrag' : 'Einträge'} übernommen (${wie})`, 'Rückgängig', () => { neu.forEach(id => delete D.entries[id]); save(); renderErfassen(); });
+  
 }
 function vorlageSpeichern(){
   const es = tagEintraege(tag, aktPerson()?.id); if(!es.length) return;
@@ -980,7 +979,7 @@ function vorlageSpeichern(){
     b.querySelector('#tplOk').onclick = () => {
       const name = b.querySelector('#tplName').value.trim() || 'Vorlage';
       D.tpls[uid()] = {name, posten: es.map(e => ({actId:e.actId, start:e.start, minuten:e.minuten})), erstellt:new Date().toISOString()};
-      save(); schliesseSheet(); renderErfassen(); toast(`Vorlage „${name}“ gespeichert`);
+      save(); schliesseSheet(); renderErfassen(); 
     };
   });
 }
@@ -1058,7 +1057,7 @@ function eintragAktionenAG(id){
   const e = D.entries[id]; if(!e) return;
   aktionen(`${act(e.actId).name} · ${dauerT(e.minuten)}`, [
     {icon:'pencil', text:'Bearbeiten', fn:() => eintragSheet({id})},
-    D.entries[id].klaeren ? {icon:'check', text:'Als geklärt markieren', farbe:'#557352', fn:() => { if(!D.entries[id]) return; delete D.entries[id].klaeren; save(); renderErfassen(); toast('Geklärt'); }}
+    D.entries[id].klaeren ? {icon:'check', text:'Als geklärt markieren', farbe:'#557352', fn:() => { if(!D.entries[id]) return; delete D.entries[id].klaeren; save(); renderErfassen();  }}
       : {icon:'alert', text:'Als „zu klären“ markieren', farbe:'#D29B3C', fn:() => { if(!D.entries[id]) return; D.entries[id].klaeren = true; save(); renderErfassen(); }},
     {icon:'copy', text:'Duplizieren', fn:() => eintragDuplizierenAG(id)},
     {icon:'calendar', text:'Auf anderen Tag kopieren …', fn:() => kopierenAuf(id)},
@@ -1068,7 +1067,7 @@ function eintragAktionenAG(id){
 function eintragLoeschenAG(id){
   const alt = D.entries[id]; if(!alt) return;
   delete D.entries[id]; save(); renderErfassen();
-  toast(`${act(alt.actId).name} gelöscht`, 'Rückgängig', () => { D.entries[id] = alt; neuIds = new Set([id]); save(); renderErfassen(); });
+  
 }
 function eintragDuplizierenAG(id, datum){
   const e = D.entries[id]; if(!e) return;
@@ -1076,7 +1075,7 @@ function eintragDuplizierenAG(id, datum){
   D.entries[nid] = {...e, datum:d, cent: d === e.datum ? e.cent : satzAm(act(e.actId), d), von:L.name || '', erstellt:new Date().toISOString()};
   delete D.entries[nid].geaendert;
   neuIds = new Set([nid]); save(); renderErfassen();
-  toast(datum ? `Kopiert auf ${tagText(d)}` : 'Dupliziert', 'Rückgängig', () => { delete D.entries[nid]; save(); renderErfassen(); });
+  
 }
 function kopierenAuf(id){
   oeffneSheet('Auf anderen Tag kopieren', `<div class="list"><div class="field"><label>Datum</label><input type="date" id="kpD" value="${plusTage(tag, 7)}"></div></div>
@@ -1224,7 +1223,7 @@ function eintragSheet({id, actId, meldId, pruef}){
         ...(st.trinkgeld ? {trinkgeld:st.trinkgeld} : {}), ...(st.klaeren ? {klaeren:true} : {}),
         ...(alt ? {geaendert:new Date().toISOString()} : {})};
       tag = st.datum; neuIds = new Set([nid]); save(); schliesseSheet(); renderErfassen(true); tick();
-      toast(`${n}: ${dauerT(st.minuten)} · ${eur(betrag(D.entries[nid]))} ${alt ? 'gespeichert' : 'erfasst'}${st.klaeren ? ' · zu klären' : ''}`);
+      
     };
     karten(); raeder();
     const c = esA.querySelector('.on'); if(c) esA.scrollLeft = c.offsetLeft - 16;
@@ -1358,7 +1357,7 @@ function buchungSheet({id, typ, pruef}){
       el.style.fontSize = fs + 'px'; };
     q('#bA').oninput = () => { breit(); zeig(); }; breit(); requestAnimationFrame(breit); setTimeout(breit, 500);
     if(alt) q('#bDel').onclick = () => { const t = D.txs[id]; delete D.txs[id]; save(); schliesseSheet(); renderKonto();
-      toast(`${TX[t.typ].name} gelöscht`, 'Rückgängig', () => { D.txs[id] = t; save(); renderKonto(); }); };
+       };
     q('#bOk').onclick = () => {
       const c = euroZuCent(q('#bA').value);
       if(!c || c < 0){ q('#bA').focus(); q('#bA').style.color = 'var(--danger)'; setTimeout(() => q('#bA').style.color = '', 600); return; }
@@ -1368,8 +1367,6 @@ function buchungSheet({id, typ, pruef}){
         zahlart:q('#bZ').value, notiz:q('#bN').value.trim(), von: alt ? alt.von : (L.name || ''), erstellt: alt ? alt.erstellt : new Date().toISOString(),
         ...(alt ? {geaendert:new Date().toISOString()} : {})};
       save(); schliesseSheet(); renderKonto(); tick();
-      if(n === 0 && vorher !== 0){ konfetti(); toast(`Ausgeglichen mit ${pname(st.personId)} 🎉`); }
-      else toast(`${TX[st.typ].name} über ${eur(c)} gebucht`);
     };
     zeig();
     if(!alt) setTimeout(() => q('#bA').focus(), 450);
@@ -1544,7 +1541,7 @@ const SEIT_IMMER = '2000-01-01';
 function renderEinstellungen(){
   kopf();
   $('c_appName').value = D.cfg.appName || ''; $('c_geraet').value = L.name || ''; $('c_theme').value = L.theme || '';
-  $('c_zahlen').value = zahlModus();
+
   const ps = personen(true);
   $('personList').innerHTML = ps.length ? ps.map(p => `<button class="row" data-p="${p.id}"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)">${icon('user')}</span>
     <span class="grow"><span class="t">${esc(p.name)}</span><span class="s">Saldo ${eurS(saldo(p.id))}${p.archiviert ? ' · archiviert' : ''}</span></span>${icon('chevR').replace('class="ic"', 'class="ic chev"')}</button>`).join('')
@@ -1568,7 +1565,6 @@ $('c_sprache').onchange = e => { L.sprache = e.target.value; saveL(); spracheAnw
 $('c_appName').onchange = e => { D.cfg.appName = e.target.value.trim(); save(); kopf(); };
 $('c_geraet').onchange = e => { L.name = e.target.value.trim(); saveL(); kopf(); };
 $('c_theme').onchange = e => { L.theme = e.target.value; saveL(); thema(); };
-$('c_zahlen').onchange = e => { L.zahlen = e.target.value; delete L.zaehlen; saveL(); };
 $('personList').onclick = e => { const r = e.target.closest('[data-p]'); if(r) personBearbeiten(r.dataset.p, renderEinstellungen); };
 $('addPerson').onclick = () => personBearbeiten(null, renderEinstellungen);
 $('actList').onclick = e => { const r = e.target.closest('[data-a]'); if(r) taetigkeitBearbeiten(r.dataset.a, renderEinstellungen); };
@@ -1642,7 +1638,7 @@ function taetigkeitBearbeiten(id, nachher){
         if(!c || !ab) return q('#tNS').focus();
         st.saetze = st.saetze.filter(s => s.ab !== ab).concat({ab, cent:c}); q('#tNS').value = ''; tick(); zeig(); };
       q('#tUp').onclick = () => { const liste = taetigkeiten(true), i = liste.findIndex(a => a.id === id); if(i <= 0) return;
-        liste.forEach((a, j) => D.acts[a.id].sort = j); D.acts[id].sort = i - 1; D.acts[liste[i - 1].id].sort = i; st.sort = i - 1; save(); tick(); toast('Nach vorne verschoben'); nachher && nachher(); };
+        liste.forEach((a, j) => D.acts[a.id].sort = j); D.acts[id].sort = i - 1; D.acts[liste[i - 1].id].sort = i; st.sort = i - 1; save(); tick();  nachher && nachher(); };
       if(q('#tDel')) q('#tDel').onclick = () => { if(!confirm(`„${alt.name}“ löschen?`)) return; delete D.acts[id];
         Object.values(D.tpls).forEach(t => t.posten = t.posten.filter(x => x.actId !== id)); save(); schliesseSheet(); nachher && nachher(); };
     }
@@ -1673,7 +1669,7 @@ function vorlageBearbeiten(id){
     <div class="list" style="margin-top:10px">${t.posten.map(x => { const a = act(x.actId); return `<div class="row"><span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span><span class="grow"><span class="t">${esc(a.name)}</span><span class="s">${x.start != null ? uhr(x.start) + ' · ' : ''}${dauerT(x.minuten)}</span></span></div>`; }).join('')}</div>
     <div class="btns"><button class="btn ghost" id="vDel" style="flex:0 0 64px;color:var(--danger)">${icon('trash')}</button><button class="btn" id="vOk">${icon('check')}Speichern</button></div>`, b => {
     b.querySelector('#vOk').onclick = () => { t.name = b.querySelector('#vN').value.trim() || t.name; save(); schliesseSheet(); renderEinstellungen(); };
-    b.querySelector('#vDel').onclick = () => { delete D.tpls[id]; save(); schliesseSheet(); renderEinstellungen(); toast('Vorlage gelöscht', 'Rückgängig', () => { D.tpls[id] = t; save(); renderEinstellungen(); }); };
+    b.querySelector('#vDel').onclick = () => { delete D.tpls[id]; save(); schliesseSheet(); renderEinstellungen();  };
   });
 }
 
@@ -1709,7 +1705,7 @@ function willkommen(){
       L.name = st.name; const pid = uid(); L.person = pid; saveL();
       D.persons[pid] = {name:st.person, sort:0, erstellt:new Date().toISOString()};
       D.acts[uid()] = {name:st.akt, icon:st.icon, farbe:FARBEN[0], saetze:[{ab:SEIT_IMMER, cent:c}], sort:0, erstellt:new Date().toISOString()};
-      save(); schliesseSheet(); konfetti(); renderErfassen(); toast('Alles bereit – tippe die Kachel an, um zu erfassen');
+      save(); schliesseSheet(); konfetti(); renderErfassen(); 
       return;
     }
     schritt = +z; zeig();
@@ -1723,7 +1719,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.3.5';
+const APP_VERSION = '1.3.6';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1742,7 +1738,7 @@ function verlaufSchritt(von, nach, text){
   if(!von.length) return;
   nach.push(VERLAUF.stand); D = Object.assign(leer(), JSON.parse(von.pop()));
   VERLAUF.aus = true; save(); VERLAUF.aus = false;
-  renderAlles(); tick(); toast(`${text} (${VERLAUF.zurueck.length} zurück, ${VERLAUF.vor.length} vor möglich)`, '', null, 2200);
+  renderAlles(); tick(); 
 }
 $('undoBtn').innerHTML = icon('undo'); $('redoBtn').innerHTML = icon('redo');
 $('undoBtn').onclick = () => verlaufSchritt(VERLAUF.zurueck, VERLAUF.vor, 'Rückgängig');
@@ -2217,7 +2213,7 @@ function meldungenSheet(){
     b.querySelector('#mAlle').onclick = () => {
       if(!confirm(`${offen.length} ${offen.length === 1 ? 'Meldung' : 'Meldungen'} unverändert übernehmen?`)) return;
       offen.forEach(x => meldUebernehmen(x.m, x.pid, null, true)); save(); schliesseSheet(); renderAlles();
-      toast(`${offen.length} übernommen`); };
+       };
   });
 }
 function meldPruefen({m, pid}){
@@ -2252,7 +2248,7 @@ function meldUebernehmen(m, pid, w, still){
   D.meldStatus[m.id] = {pid, status:gleich ? 'ok' : 'geaendert', version:m.version || 1, ziel, art, am:jetzt, von:L.name || ''};
   if(still) return;
   save(); neuIds = new Set([ziel]); renderAlles();
-  toast(gleich ? 'Übernommen' : 'Geändert übernommen', 'Rückgängig', () => { delete D[art][ziel]; delete D.meldStatus[m.id]; save(); renderAlles(); });
+  
 }
 function meldAblehnen(m, pid){
   oeffneSheet('Meldung ablehnen', `<div class="list"><button class="row" style="pointer-events:none">${meldZeile(m, pid)}</button></div>
@@ -2261,7 +2257,7 @@ function meldAblehnen(m, pid){
     setTimeout(() => b.querySelector('#agG').focus(), 400);
     b.querySelector('#agOk').onclick = () => {
       D.meldStatus[m.id] = {pid, status:'abgelehnt', version:m.version || 1, grund:b.querySelector('#agG').value.trim(), am:new Date().toISOString(), von:L.name || ''};
-      save(); schliesseSheet(); renderAlles(); toast('Abgelehnt'); };
+      save(); schliesseSheet(); renderAlles();  };
   });
 }
 function austauschSheet(pid){
