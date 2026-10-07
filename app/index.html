@@ -1718,7 +1718,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.3.7';
+const APP_VERSION = '1.3.8';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1777,10 +1777,13 @@ $('snapLoad').onclick = async () => {
   await lokaleKopie('-vorher'); uebernehmeBackup(data);
   $('dataMsg').innerHTML = `<span class="ok">Kopie vom ${dmy(k.slice(0, 10))} geladen.</span>`;
 };
-$('expJson').onclick = () => {
-  const blob = new Blob([JSON.stringify(backupDaten(), null, 1)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `zeitabrechnung_${heute()}_v${APP_VERSION}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+/* Backup: auf dem iPhone ueber das Teilen-Menue (ein Download-Link verlaesst dort die App und leert beim Zurueckkehren die Formularfelder) */
+$('expJson').onclick = async () => {
+  const name = `zeitabrechnung_${heute()}_v${APP_VERSION}.json`;
+  const datei = new File([JSON.stringify(backupDaten(), null, 1)], name, {type:'application/json'});
+  try{ if(navigator.canShare && navigator.canShare({files:[datei]})){ await navigator.share({files:[datei], title:name}); return; } }catch(e){ if(e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(datei);
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 };
 $('impJsonBtn').onclick = () => $('impJson').click();
 $('impJson').onchange = async e => {
@@ -1954,14 +1957,17 @@ async function hauptAbgleich(manuell){
   }catch(err){ msg.innerHTML = `<span class="no">${esc(err.message)}</span>`; syncFehler = err.message; }
   syncLaeuft = false; syncStatus();
 }
-$('s_repo').value = sync.repo || ''; $('s_token').value = sync.token || ''; $('s_pw').value = sync.pw || '';
+/* nur leere Felder fuellen – eine gerade eingefuegte, noch nicht gespeicherte Eingabe bleibt stehen */
+const syncFelder = () => { if(MA) return; [['s_repo', sync.repo], ['s_token', sync.token], ['s_pw', sync.pw]].forEach(([id, v]) => { if(!$(id).value && v) $(id).value = v; }); };
+syncFelder();
+addEventListener('pageshow', syncFelder);              // nach Rueckkehr (Teilen, Download) gespeicherte Zugangsdaten wieder anzeigen
 if(syncAktiv() && sync.zuletzt) $('syncMsg').innerHTML = `<span class="ok">Abgeglichen: ${new Date(sync.zuletzt).toLocaleString('de-DE')}.</span>`;
 $('syncSave').onclick = () => {
   const repo = $('s_repo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$|\/$/g, '');
   const token = $('s_token').value.trim(), pw = $('s_pw').value;
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ $('syncMsg').innerHTML = '<span class="no">Repo bitte als „besitzer/name“ angeben.</span>'; return; }
   if(!token || pw.length < 8){ $('syncMsg').innerHTML = '<span class="no">Token und ein Passwort mit mindestens 8 Zeichen eintragen.</span>'; return; }
-  if(repo !== sync.repo || pw !== sync.pw) sync = {repo, token, pw}; else sync.token = token;
+  if(repo !== sync.repo || pw !== sync.pw){ const {axToken} = sync; sync = {repo, token, pw, ...(axToken ? {axToken} : {})}; } else sync.token = token;   // eigener Austausch-Token bleibt
   saveSync(); abgleichen(true);
 };
 $('syncNow').onclick = () => abgleichen(true);
@@ -1971,7 +1977,7 @@ $('syncBtn').onclick = () => {
 };
 addEventListener('online', () => { syncStatus(); abgleichen(false); });
 addEventListener('offline', syncStatus);
-document.addEventListener('visibilitychange', () => { lokaleKopie(); abgleichen(false); if(!document.hidden) renderAlles(); });
+document.addEventListener('visibilitychange', () => { lokaleKopie(); abgleichen(false); if(!document.hidden){ syncFelder(); renderAlles(); } });
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
 /* --- Einrichtung per QR-Code: Repo, Token, Passwort als Link #za=… (base64url-JSON) ---
