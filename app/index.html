@@ -324,6 +324,17 @@ button.row:active{background:var(--surface2)}
 .scan video{width:100%;height:100%;object-fit:cover;display:block}
 .scan .frame{position:absolute;inset:16%;border:3px solid #fff;border-radius:20px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
 .scan .off{position:absolute;inset:0;z-index:1;background:#000;display:grid;place-items:center;color:#fff;font-size:14px;text-align:center;padding:24px}
+/* ---------- Rollen: Arbeitgeber (Standard) / Mitarbeiter (body.ma) ---------- */
+body.ma .nur-ag{display:none!important}
+body:not(.ma) .nur-ma{display:none!important}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.tag.offen{background:var(--ochre-soft);color:var(--ochre)} .tag.ab{background:var(--terra-soft);color:var(--danger)} .tag.neu{background:var(--sage-soft);color:var(--sage-d)}
+.meldbanner{display:flex;align-items:center;gap:12px;margin:0 0 12px;background:linear-gradient(135deg,var(--ochre-soft),var(--surface));border:1px solid color-mix(in srgb,var(--ochre) 30%,transparent)}
+.meldbanner b{display:block;font-family:var(--round);font-size:16px}
+.meldbanner span.s{font-size:13px;color:var(--muted)}
+.entry.offen{background:color-mix(in srgb,var(--ochre) 7%,var(--surface))}
+.entry.abgelehnt{background:color-mix(in srgb,var(--danger) 6%,var(--surface))}
+.entry.abgelehnt .amt{text-decoration:line-through;color:var(--muted)}
 @media (min-width:560px){.tiles{grid-template-columns:repeat(4,1fr)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -338,13 +349,14 @@ button.row:active{background:var(--surface2)}
 <main>
   <!-- ===== Erfassen ===== -->
   <section class="tab on" id="t-erf">
-    <div class="monthbar"><b id="monthLbl">–</b><button class="pill" id="todayBtn">Heute</button></div>
+    <div id="meldBanner"></div>
+    <div class="monthbar"><b id="monthLbl">–</b><button class="pill" id="todayBtn" data-t>Heute</button></div>
     <div class="strip" id="strip"></div>
     <div class="card daycard" id="dayCard"></div>
     <div class="quick" id="quick"></div>
-    <h2>Tätigkeiten</h2>
+    <h2 data-t>Tätigkeiten</h2>
     <div class="tiles" id="tiles"></div>
-    <h2><span>Einträge</span><span class="sp"></span><span id="dayWeek" style="text-transform:none;letter-spacing:0;font-weight:600"></span></h2>
+    <h2><span data-t>Einträge</span><span class="sp"></span><span id="dayWeek" style="text-transform:none;letter-spacing:0;font-weight:600"></span></h2>
     <div class="list" id="entries"></div>
     <p class="hint" id="swipeHint">Tipp: Eintrag nach links wischen = löschen, nach rechts = duplizieren, gedrückt halten = mehr.</p>
   </section>
@@ -359,14 +371,15 @@ button.row:active{background:var(--surface2)}
     </div>
     <div class="acts5" id="txQuick"></div>
     <div id="personSel"></div>
-    <h2>Verlauf</h2>
+    <div id="maOffen"></div>
+    <h2 data-t>Verlauf</h2>
     <div class="list" id="ledger"></div>
   </section>
 
   <!-- ===== Auswertung ===== -->
   <section class="tab" id="t-aus">
     <div class="seg" id="seg"><span class="knob"></span>
-      <button data-p="w">Woche</button><button data-p="m" class="on">Monat</button><button data-p="q">Quartal</button><button data-p="y">Jahr</button>
+      <button data-p="w" data-t>Woche</button><button data-p="m" class="on" data-t>Monat</button><button data-p="q" data-t>Quartal</button><button data-p="y" data-t>Jahr</button>
     </div>
     <div class="pnav"><button id="pPrev" aria-label="zurück"></button><b id="pLbl">–</b><button id="pNext" aria-label="weiter"></button></div>
     <div id="ausBody"></div>
@@ -374,17 +387,19 @@ button.row:active{background:var(--surface2)}
 
   <!-- ===== Einstellungen ===== -->
   <section class="tab" id="t-cfg">
-    <h1 class="big">Einstellungen</h1>
-    <h2>Allgemein</h2>
+    <h1 class="big" data-t>Einstellungen</h1>
+    <h2 data-t>Allgemein</h2>
     <div class="list">
-      <div class="field"><label>App-Name</label><input id="c_appName" placeholder="Zeitabrechnung"></div>
-      <div class="field"><label>Dein Name</label><input id="c_geraet" placeholder="nur auf diesem Gerät"></div>
-      <div class="field"><label>Darstellung</label><select id="c_theme"><option value="">Automatisch</option><option value="light">Hell</option><option value="dark">Dunkel</option></select></div>
-      <div class="field"><label>Konfetti</label><span style="flex:1"></span><input type="checkbox" class="switch" id="c_konfetti"></div>
-      <div class="field"><label>Zählanimation</label><span style="flex:1;font-size:13px;color:var(--muted)">Beträge zählen hoch</span><input type="checkbox" class="switch" id="c_zaehlen"></div>
+      <div class="field nur-ag"><label>App-Name</label><input id="c_appName" placeholder="Zeitabrechnung"></div>
+      <div class="field"><label data-t>Dein Name</label><input id="c_geraet" placeholder="nur auf diesem Gerät" data-tp></div>
+      <div class="field nur-ma"><label data-t>Sprache</label><select id="c_sprache"><option value="de">Deutsch</option><option value="ru">Русский</option></select></div>
+      <div class="field"><label data-t>Darstellung</label><select id="c_theme"><option value="" data-t>Automatisch</option><option value="light" data-t>Hell</option><option value="dark" data-t>Dunkel</option></select></div>
+      <div class="field"><label data-t>Konfetti</label><span style="flex:1"></span><input type="checkbox" class="switch" id="c_konfetti"></div>
+      <div class="field"><label data-t>Zählanimation</label><span style="flex:1;font-size:13px;color:var(--muted)" data-t>Beträge zählen hoch</span><input type="checkbox" class="switch" id="c_zaehlen"></div>
     </div>
-    <p class="hint">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Name, Darstellung und Effekte werden nicht synchronisiert – jedes Gerät hat eigene.</p>
+    <p class="hint nur-ag">„Dein Name“ steht als Kürzel an deinen Einträgen und in der Begrüßung. Name, Darstellung und Effekte werden nicht synchronisiert – jedes Gerät hat eigene.</p>
 
+    <div class="nur-ag">
     <h2><span>Personen</span><span class="sp"></span><button id="addPerson">Hinzufügen</button></h2>
     <div class="list" id="personList"></div>
 
@@ -418,22 +433,32 @@ button.row:active{background:var(--surface2)}
     </div>
     <input type="file" id="impJson" accept="application/json,.json" class="hidden">
     <div class="msg" id="dataMsg"></div>
-
-    <h2>App</h2>
-    <div class="list">
-      <div class="field"><label>Version</label><input id="verNum" readonly></div>
-      <div class="field"><label>Stand</label><input id="verDate" readonly></div>
-      <button class="row" id="checkUpdate"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)" data-i="refresh"></span><span class="grow"><span class="t">Nach Update suchen</span><span class="s" id="updateInfo">lädt die neueste Version</span></span></button>
     </div>
-    <p class="hint" style="text-align:center;margin-top:22px">Alle Daten bleiben auf deinen Geräten bzw. verschlüsselt in deinem Repo.</p>
+
+    <div class="nur-ma">
+      <h2 data-t>Verbindung</h2>
+      <div class="list">
+        <div class="row"><span class="bubble" style="background:var(--sage-soft);color:var(--sage-d)" data-i="user"></span><span class="grow"><span class="t" id="maWer"></span><span class="s" id="maStand"></span></span></div>
+        <button class="row" id="maSync"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)" data-i="refresh"></span><span class="grow"><span class="t" data-t>Jetzt abgleichen</span><span class="s" id="maMsg"></span></span></button>
+        <button class="row" id="maRaus"><span class="bubble" style="background:var(--surface2);color:var(--danger)" data-i="trash"></span><span class="grow"><span class="t" style="color:var(--danger)" data-t>Zugang entfernen</span></span></button>
+      </div>
+    </div>
+
+    <h2 data-t>App</h2>
+    <div class="list">
+      <div class="field"><label data-t>Version</label><input id="verNum" readonly></div>
+      <div class="field"><label data-t>Stand</label><input id="verDate" readonly></div>
+      <button class="row" id="checkUpdate"><span class="bubble" style="background:var(--terra-soft);color:var(--terra)" data-i="refresh"></span><span class="grow"><span class="t" data-t>Nach Update suchen</span><span class="s" id="updateInfo" data-t>lädt die neueste Version</span></span></button>
+    </div>
+    <p class="hint nur-ag" style="text-align:center;margin-top:22px">Alle Daten bleiben auf deinen Geräten bzw. verschlüsselt in deinem Repo.</p>
   </section>
 </main>
 
 <nav id="nav">
-  <button data-tab="erf" class="on"><span data-i="plusCircle"></span>Erfassen</button>
-  <button data-tab="kto"><span data-i="wallet"></span>Konto</button>
-  <button data-tab="aus"><span data-i="chart"></span>Auswertung</button>
-  <button data-tab="cfg"><span data-i="sliders"></span>Einstellungen</button>
+  <button data-tab="erf" class="on"><span data-i="plusCircle"></span><span data-t>Erfassen</span></button>
+  <button data-tab="kto"><span data-i="wallet"></span><span data-t>Konto</span></button>
+  <button data-tab="aus"><span data-i="chart"></span><span data-t>Auswertung</span></button>
+  <button data-tab="cfg"><span data-i="sliders"></span><span data-t>Einstellungen</span></button>
 </nav>
 
 <div class="scrim" id="scrim"></div>
@@ -464,14 +489,68 @@ const plusTage = (s, n) => vonNum(dnum(s) + n);
 const wtag = s => (new Date(dnum(s) * 864e5).getUTCDay() + 6) % 7;      // 0 = Montag
 const montag = s => plusTage(s, -wtag(s));
 const kw = s => { const d = dnum(s), do_ = d - wtag(s) + 3, j = vonNum(do_).slice(0,4); return Math.floor((do_ - dnum(j + '-01-01')) / 7) + 1; };
-const WT = ['Mo','Di','Mi','Do','Fr','Sa','So'];
-const WTL = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
-const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-const MONK = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+let WT = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+let WTL = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+let MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+let MONK = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const KAL = {de:[WT, WTL, MON, MONK], ru:[['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
+  ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'],
+  ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
+  ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']]};
+
+/* Sprache der Mitarbeiter-Ansicht: deutscher Text ist der Schluessel, RU die Uebersetzung */
+const RU = {
+  'Hallo':'Привет','Guten Morgen':'Доброе утро','Guten Abend':'Добрый вечер','Gute Nacht':'Доброй ночи',
+  'Erfassen':'Записать','Konto':'Счёт','Auswertung':'Обзор','Einstellungen':'Настройки',
+  'Heute':'Сегодня','Gestern':'Вчера','Morgen':'Завтра','Tätigkeiten':'Работы','Einträge':'Записи','Eintrag':'Запись',
+  'Noch nichts erfasst – Tätigkeit antippen':'Пока ничего нет – нажми на работу',
+  'Für heute ist noch nichts erfasst.':'На сегодня ещё ничего не записано.','Für diesen Tag ist noch nichts erfasst.':'На этот день ещё ничего не записано.',
+  'Beginn':'Начало','Ende':'Конец','Dauer':'Длительность','Mit Uhrzeit':'С указанием времени','Datum':'Дата','Notiz':'Заметка','optional':'необязательно',
+  'Speichern':'Сохранить','Melden':'Отправить','Löschen':'Удалить','Bearbeiten':'Изменить','Abbrechen':'Отмена',
+  'Verlauf':'История','Arbeit':'Работа','Ältere anzeigen':'Показать старые','Noch keine Buchungen.':'Пока нет операций.',
+  'Auszahlung':'Выплата','Auslage':'Расход','Darlehen':'Заём','Rückzahlung':'Возврат','Korrektur':'Корректировка',
+  'Woche':'Неделя','Monat':'Месяц','Quartal':'Квартал','Jahr':'Год',
+  'Verdienst':'Заработок','Stunden':'Часы','Einsatztage':'Рабочие дни','Ausgezahlt':'Выплачено',
+  'zur Vorperiode':'к прошлому периоду','pro Tag':'в день','Saldo am':'Баланс на','offen':'к оплате','Schuld':'долг','ausgeglichen':'рассчитано',
+  'Nach Tätigkeit':'По видам работ','Saldo-Verlauf':'Динамика баланса','im Überblick':'— обзор','weniger':'меньше','mehr':'больше',
+  'Zeitraum als CSV exportieren':'Экспорт периода в CSV','Keine Einträge in diesem Zeitraum.':'Нет записей за этот период.','Noch keine Daten.':'Пока нет данных.',
+  'Quartal ':'квартал ','KW':'Нед.',
+  'Allgemein':'Общее','Dein Name':'Твоё имя','Darstellung':'Оформление','Automatisch':'Автоматически','Hell':'Светлое','Dunkel':'Тёмное',
+  'Konfetti':'Конфетти','Zählanimation':'Анимация сумм','Beträge zählen hoch':'Суммы считаются вверх','Sprache':'Язык',
+  'Verbindung':'Подключение','App':'Приложение','Version':'Версия','Stand':'Сборка','Nach Update suchen':'Проверить обновление','lädt die neueste Version':'загружает последнюю версию',
+  'Zugang entfernen':'Удалить доступ','Jetzt abgleichen':'Синхронизировать',
+  'offen ·':'ждёт подтверждения ·','Offen':'Ждёт','Bestätigt':'Подтверждено','Abgelehnt':'Отклонено','geändert':'изменено',
+  'Noch nicht bestätigt':'Ещё не подтверждено','davon vorläufig':'из них предварительно',
+  'Sie schulden dir':'Тебе должны','Du schuldest':'Ты должна','Ausgeglichen':'Всё рассчитано',
+  'Auslage melden':'Сообщить о расходе','Betrag':'Сумма','Gemeldet':'Отправлено','Gelöscht':'Удалено','Rückgängig':'Отменить',
+  'Erneut melden':'Отправить снова','Entfernen':'Убрать','Grund':'Причина',
+  'Abgeglichen':'Синхронизировано','Gleiche ab …':'Синхронизация …','Änderungen noch nicht gesendet':'Изменения ещё не отправлены',
+  'Offline – wird später abgeglichen':'Нет сети – синхронизация позже','Noch nicht verbunden':'Ещё не подключено',
+  'Warte auf den ersten Abgleich …':'Ожидание первой синхронизации …',
+  'Stand der Daten':'Данные от','Tipp: offene Meldung antippen = ändern oder löschen.':'Совет: нажми на неподтверждённую запись, чтобы изменить или удалить.',
+  'Bereits bestätigt – Änderungen nur durch den Arbeitgeber.':'Уже подтверждено – изменить может только работодатель.',
+  'Wird beim nächsten Abgleich gesendet.':'Будет отправлено при следующей синхронизации.',
+  'Was hast du bezahlt?':'Что ты оплатила?','z. B. Putzmittel':'например, моющие средства',
+  'Diese Meldung wurde abgelehnt':'Эта запись отклонена','Zahlungsart':'Способ оплаты','bar':'наличные','Überweisung':'перевод',
+  'Hinweis':'Подсказка','Du bist angemeldet als':'Ты подключена как','Wirklich entfernen? Alle Daten auf diesem Gerät werden gelöscht.':'Точно удалить? Все данные на этом устройстве будут удалены.',
+  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве'
+};
+const T = s => (typeof L !== 'undefined' && L.sprache === 'ru' && RU[s]) || s;
+const PLURAL = {Eintrag:['Eintrag','Einträge','запись','записи','записей'], Buchung:['Buchung','Buchungen','операция','операции','операций'], Meldung:['Meldung','Meldungen','запись','записи','записей']};
+function anz(n, w){ const f = PLURAL[w];
+  if(L.sprache !== 'ru') return `${n} ${n === 1 ? f[0] : f[1]}`;
+  const m10 = n % 10, m100 = n % 100;
+  return `${n} ${m10 === 1 && m100 !== 11 ? f[2] : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? f[3] : f[4]}`; }
+function spracheAnwenden(){
+  [WT, WTL, MON, MONK] = KAL[L.sprache === 'ru' ? 'ru' : 'de'];
+  document.documentElement.lang = L.sprache === 'ru' ? 'ru' : 'de';
+  document.querySelectorAll('[data-t]').forEach(el => { if(!el.dataset.t) el.dataset.t = el.textContent.trim(); el.textContent = T(el.dataset.t); });
+  document.querySelectorAll('[data-tp]').forEach(el => { if(!el.dataset.tp) el.dataset.tp = el.placeholder; el.placeholder = T(el.dataset.tp); });
+}
 const dm = s => `${+s.slice(8,10)}.${+s.slice(5,7)}.`;
 const dmy = s => `${s.slice(8,10)}.${s.slice(5,7)}.${s.slice(0,4)}`;
 const tagText = s => { const d = dnum(s) - dnum(heute());
-  return d === 0 ? 'Heute' : d === -1 ? 'Gestern' : d === 1 ? 'Morgen' : `${WTL[wtag(s)]}, ${dm(s)}`; };
+  return d === 0 ? T('Heute') : d === -1 ? T('Gestern') : d === 1 ? T('Morgen') : `${WTL[wtag(s)]}, ${dm(s)}`; };
 
 /* Geld in Cent, Zeit in Minuten */
 const EUR = new Intl.NumberFormat('de-DE', {style:'currency', currency:'EUR'});
@@ -559,19 +638,25 @@ const icon = (n, st = '') => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="t
 const hydrate = (root = document) => root.querySelectorAll('[data-i]').forEach(el => { el.innerHTML = icon(el.dataset.i); el.removeAttribute('data-i'); });
 
 /* ---------- Daten ----------
-   D (synchronisiert): cfg, persons, acts, tpls, entries, txs - jeweils {id: objekt}
-   L (nur dieses Geraet): name, theme, person (aktive Person), hinweise */
-const LS = {data:'za_data', local:'za_local', sync:'za_sync', dirty:'za_dirty'};
-const BEREICHE = ['cfg','persons','acts','tpls','entries','txs'];
+   D (synchronisiert): cfg, persons, acts, tpls, entries, txs, meldStatus - jeweils {id: objekt}
+   L (nur dieses Geraet): name, theme, person (aktive Person), hinweise, rolle ('ma' = Mitarbeiter-App), sprache
+   Mitarbeiter-App: D ist nur die gelesene Spiegel-Datei (za_spiegel), eigene Meldungen in za_meld */
+const LS = {data:'za_data', local:'za_local', sync:'za_sync', dirty:'za_dirty', spiegel:'za_spiegel', meld:'za_meld'};
+const BEREICHE = ['cfg','persons','acts','tpls','entries','txs','meldStatus'];
 const leer = () => Object.fromEntries(BEREICHE.map(b => [b, {}]));
-let D = Object.assign(leer(), load(LS.data, {}));
 let L = load(LS.local, {});
+const MA = L.rolle === 'ma';
+let D = Object.assign(leer(), MA ? {} : load(LS.data, {}));
 function save(){
+  if(MA) return;                                   // Mitarbeiter-App veraendert D nie
   localStorage.setItem(LS.data, JSON.stringify(D));
   localStorage.setItem(LS.dirty, '1');
   if(typeof syncNachAenderung === 'function') syncNachAenderung();
 }
 const saveL = () => localStorage.setItem(LS.local, JSON.stringify(L));
+/* Mitarbeiter-App: eigene Meldungen {id: {id, art:'arbeit'|'auslage', datum, actId, start, minuten, cent, notiz, version, erstellt, geaendert}} */
+let MELD = MA ? load(LS.meld, {list:{}, dirty:false}) : null;
+function saveMeld(){ MELD.dirty = true; localStorage.setItem(LS.meld, JSON.stringify(MELD)); if(typeof syncNachAenderung === 'function') syncNachAenderung(); }
 
 const sortiert = o => Object.entries(o).map(([id, v]) => ({id, ...v})).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.erstellt || '').localeCompare(b.erstellt || ''));
 const personen = (alle) => sortiert(D.persons).filter(p => alle || !p.archiviert);
@@ -579,6 +664,8 @@ const taetigkeiten = (alle) => sortiert(D.acts).filter(a => alle || !a.archivier
 const aktPerson = () => { const ps = personen(); return ps.find(p => p.id === L.person) || ps[0] || null; };
 const pname = id => (D.persons[id] && D.persons[id].name) || 'Person';
 const act = id => D.acts[id] || {name:'(gelöscht)', icon:'star', farbe:'#9C8C7C', saetze:[]};
+const aName = a => (L.sprache === 'ru' && a.nameRu) || a.name;
+const aNameId = id => aName(act(id));
 
 /* Stundensatz zum Datum: letzter Satz mit "ab" <= Datum, sonst der frueheste */
 function satzAm(a, datum){
@@ -709,7 +796,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => zeigeTab(
 addEventListener('scroll', () => $('hdr').classList.toggle('scrolled', scrollY > 4), {passive:true});
 function kopf(){
   const h = new Date().getHours(), n = L.name ? ', ' + L.name : '';
-  $('greet').textContent = (h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 17 ? 'Hallo' : h < 22 ? 'Guten Abend' : 'Gute Nacht') + n;
+  $('greet').textContent = T(h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 17 ? 'Hallo' : h < 22 ? 'Guten Abend' : 'Gute Nacht') + n;
   $('hTitle').textContent = D.cfg.appName || 'Zeitabrechnung';
   document.title = D.cfg.appName || 'Zeitabrechnung';
 }
@@ -723,6 +810,7 @@ function renderStrip(sanft){
   const h = heute(), lo = Math.min(dnum(tag), dnum(h)) - 120, hi = Math.max(dnum(tag), dnum(h)) + 30;
   const pid = aktPerson()?.id, proTag = {};
   for(const e of Object.values(D.entries)) if(!pid || e.personId === pid) (proTag[e.datum] ||= new Set()).add(act(e.actId).farbe);
+  if(MA) for(const m of meineMeldungen(m => m.art === 'arbeit')) (proTag[m.datum] ||= new Set()).add(act(m.actId).farbe);
   const s = $('strip'), links = s.scrollLeft, ersterAlt = s.firstElementChild && s.firstElementChild.dataset.d;
   let html = '';
   for(let n = lo; n <= hi; n++){
@@ -751,22 +839,32 @@ function renderErfassen(sanft){
   $('todayBtn').style.visibility = tag === heute() ? 'hidden' : '';
   renderStrip(sanft);
 
-  const es = tagEintraege(tag, pid);
+  const alle = tagListe(tag, pid), es = alle.filter(e => !e.meld || e.zustand === 'offen');
   const min = es.reduce((s, e) => s + e.minuten, 0), cent = es.reduce((s, e) => s + betrag(e), 0);
+  const offen = es.filter(e => e.meld).reduce((s, e) => s + betrag(e), 0);
   const teile = {}; es.forEach(e => { const a = act(e.actId); teile[a.farbe] = (teile[a.farbe] || 0) + e.minuten; });
   $('dayCard').innerHTML = ringSvg(Object.entries(teile).map(([c, v]) => ({c, v})), min, min ? dauer(min) : '0') +
     `<div><div class="meta">${tagText(tag)}${p && personen().length > 1 ? ' · ' + esc(p.name) : ''}</div><div class="big num" id="dayAmt"></div>
-     <div class="meta">${es.length ? `${es.length} ${es.length === 1 ? 'Eintrag' : 'Einträge'} · ${dauerT(min)}` : 'Noch nichts erfasst – Tätigkeit antippen'}</div></div>`;
+     <div class="meta">${es.length ? `${anz(es.length, 'Eintrag')} · ${dauerT(min)}${offen ? ` · ${T('davon vorläufig')} ${eur(offen)}` : ''}` : T('Noch nichts erfasst – Tätigkeit antippen')}</div></div>`;
   zaehle($('dayAmt'), cent, eur, 600);
 
   // Wochensumme
   const mo = montag(tag), so = plusTage(mo, 6);
   const wo = eintraege(e => e.datum >= mo && e.datum <= so && (!pid || e.personId === pid));
-  $('dayWeek').textContent = wo.length ? `KW ${kw(tag)}: ${dauerT(wo.reduce((s, e) => s + e.minuten, 0))} · ${eur(wo.reduce((s, e) => s + betrag(e), 0))}` : '';
+  $('dayWeek').textContent = wo.length ? `${T('KW')} ${kw(tag)}: ${dauerT(wo.reduce((s, e) => s + e.minuten, 0))} · ${eur(wo.reduce((s, e) => s + betrag(e), 0))}` : '';
 
+  renderMeldBanner();
   renderSchnell(es, pid);
   renderKacheln();
-  renderEintraege(es);
+  renderEintraege(alle);
+}
+/* Tagesliste: Eintraege + (Mitarbeiter-App) eigene, noch nicht erledigte Meldungen als Pseudo-Eintraege */
+function tagListe(datum, pid){
+  const es = tagEintraege(datum, pid);
+  if(!MA) return es;
+  const ms = meineMeldungen(m => m.art === 'arbeit' && m.datum === datum).map(m => ({id:'m:' + m.id, meld:m, zustand:meldZustand(m), datum:m.datum, personId:pid,
+    actId:m.actId, start:m.start, ende:m.start != null ? (m.start + m.minuten) % 1440 : null, minuten:m.minuten, cent:satzAm(act(m.actId), m.datum), notizMa:m.notiz, von:L.name || ''}));
+  return es.concat(ms).sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999));
 }
 
 function renderSchnell(es, pid){
@@ -774,9 +872,10 @@ function renderSchnell(es, pid){
   // "Wie letztes Mal": juengster Tag vor dem gewaehlten mit Eintraegen
   let letzter = null;
   for(const e of Object.values(D.entries)) if(e.datum < tag && (!pid || e.personId === pid) && (!letzter || e.datum > letzter)) letzter = e.datum;
-  if(letzter && !es.length) chips.push(`<button class="chip" data-q="last" data-d="${letzter}">${icon('repeat')}Wie am ${WT[wtag(letzter)]} ${dm(letzter)}</button>`);
-  for(const t of sortiert(D.tpls)) chips.push(`<button class="chip" data-q="tpl" data-id="${t.id}">${icon('layers')}${esc(t.name)}</button>`);
-  if(es.length) chips.push(`<button class="chip" data-q="save">${icon('bookmark')}Als Vorlage</button>`);
+  if(letzter && !es.length) chips.push(`<button class="chip" data-q="last" data-d="${letzter}">${icon('repeat')}${T('Wie am')} ${WT[wtag(letzter)]} ${dm(letzter)}</button>`);
+  if(!MA) for(const t of sortiert(D.tpls)) chips.push(`<button class="chip" data-q="tpl" data-id="${t.id}">${icon('layers')}${esc(t.name)}</button>`);
+  if(es.length && !MA) chips.push(`<button class="chip" data-q="save">${icon('bookmark')}Als Vorlage</button>`);
+  if(MA) chips.push(`<button class="chip" data-q="auslage">${icon('receipt')}${T('Auslage melden')}</button>`);
   $('quick').innerHTML = chips.join('');
   $('quick').style.display = chips.length ? '' : 'none';
 }
@@ -786,10 +885,19 @@ $('quick').onclick = e => {
   if(b.dataset.q === 'last') uebernehmePosten(tagEintraege(b.dataset.d, pid).map(x => ({actId:x.actId, start:x.start, minuten:x.minuten, notiz:x.notiz})), `Wie am ${dm(b.dataset.d)}`);
   else if(b.dataset.q === 'tpl'){ const t = D.tpls[b.dataset.id]; t && uebernehmePosten(t.posten, t.name); }
   else if(b.dataset.q === 'save') vorlageSpeichern();
+  else if(b.dataset.q === 'auslage') auslageSheet({});
 };
 function uebernehmePosten(posten, wie){
   const pid = aktPerson()?.id; if(!pid) return;
   const neu = [];
+  if(MA){
+    for(const x of posten){ const a = D.acts[x.actId]; if(!a || a.archiviert) continue;
+      const id = uid(); MELD.list[id] = {id, art:'arbeit', datum:tag, actId:x.actId, start:x.start ?? null, minuten:x.minuten, notiz:'', version:1, erstellt:new Date().toISOString()}; neu.push(id); }
+    if(!neu.length) return;
+    neuIds = new Set(neu.map(id => 'm:' + id)); saveMeld(); renderErfassen();
+    toast(`${anz(neu.length, 'Meldung')} · ${T('Gemeldet')}`, T('Rückgängig'), () => { neu.forEach(id => delete MELD.list[id]); saveMeld(); renderErfassen(); });
+    return;
+  }
   for(const x of posten){
     const a = D.acts[x.actId]; if(!a || a.archiviert) continue;
     const id = uid();
@@ -818,8 +926,8 @@ function vorlageSpeichern(){
 function renderKacheln(){
   const as = taetigkeiten();
   $('tiles').innerHTML = as.map(a => `<button class="tile" data-a="${a.id}" style="--tc:${a.farbe}">
-      <span class="bubble">${icon(a.icon)}</span><span><b>${esc(a.name)}</b><small class="num">${eur(satzAm(a, tag))}/h</small></span></button>`).join('')
-    + `<button class="tile add" id="tileAdd">${icon('plus')}Neue Tätigkeit</button>`;
+      <span class="bubble">${icon(a.icon)}</span><span><b>${esc(aName(a))}</b><small class="num">${eur(satzAm(a, tag))}/h</small></span></button>`).join('')
+    + (MA ? '' : `<button class="tile add" id="tileAdd">${icon('plus')}Neue Tätigkeit</button>`);
 }
 $('tiles').onclick = e => {
   const b = e.target.closest('.tile'); if(!b) return; tick();
@@ -831,15 +939,19 @@ $('tiles').onclick = e => {
 let neuIds = new Set();
 function renderEintraege(es){
   const el = $('entries');
-  if(!es.length){ el.innerHTML = `<div class="empty">${icon('clock')}Für ${tagText(tag) === 'Heute' ? 'heute' : 'diesen Tag'} ist noch nichts erfasst.</div>`; $('swipeHint').style.display = 'none'; return; }
-  $('swipeHint').style.display = L.wischGelernt ? 'none' : '';
+  if(!es.length){ el.innerHTML = `<div class="empty">${icon('clock')}${T(tag === heute() ? 'Für heute ist noch nichts erfasst.' : 'Für diesen Tag ist noch nichts erfasst.')}</div>`; $('swipeHint').style.display = 'none'; return; }
+  $('swipeHint').textContent = MA ? T('Tipp: offene Meldung antippen = ändern oder löschen.') : 'Tipp: Eintrag nach links wischen = löschen, nach rechts = duplizieren, gedrückt halten = mehr.';
+  $('swipeHint').style.display = L.wischGelernt || (MA && !es.some(e => e.meld)) ? 'none' : '';
   el.innerHTML = es.map(e => { const a = act(e.actId);
+    const stat = e.meld ? (e.zustand === 'abgelehnt' ? `<span class="tag ab">${T('Abgelehnt')}</span>` : `<span class="tag offen">${T('Offen')}</span>`)
+      : !MA && e.quelle ? `<span class="tag neu" title="von der Person gemeldet">${icon('check', 'width:11px;height:11px;display:inline;vertical-align:-1px')}</span>` : '';
+    const grund = e.meld && e.zustand === 'abgelehnt' && D.meldStatus[e.meld.id]?.grund ? ` · ${T('Grund')}: ${esc(D.meldStatus[e.meld.id].grund)}` : '';
     return `<div class="swipe" data-id="${e.id}">
-      <div class="bg"><span style="color:#fff">${icon('copy')}Duplizieren</span><span>Löschen${icon('trash')}</span></div>
-      <div class="fg"><button class="entry${neuIds.has(e.id) ? ' neu' : ''}" style="--tc:${a.farbe}"><span class="bar"></span>
+      <div class="bg"><span style="color:#fff">${icon('copy')}${MA ? '' : 'Duplizieren'}</span><span>${T('Löschen')}${icon('trash')}</span></div>
+      <div class="fg"><button class="entry${neuIds.has(e.id) ? ' neu' : ''}${e.meld ? ' ' + (e.zustand === 'abgelehnt' ? 'abgelehnt' : 'offen') : ''}" style="--tc:${a.farbe}"><span class="bar"></span>
         <span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
-        <span class="grow" style="flex:1;min-width:0"><span class="t" style="font-weight:600">${esc(a.name)}</span>${e.von ? `<span class="who">${esc(kuerzel(e.von))}</span>` : ''}
-          <span class="s" style="display:block;font-size:13px;color:var(--muted)">${e.start != null ? `${uhr(e.start)}–${uhr(e.ende ?? e.start + e.minuten)} · ` : ''}${dauerT(e.minuten)} · ${eur(e.cent)}/h${e.notiz ? ' · ' + esc(e.notiz) : ''}</span></span>
+        <span class="grow" style="flex:1;min-width:0"><span class="t" style="font-weight:600">${esc(aName(a))}</span>${e.von && !e.meld ? `<span class="who">${esc(kuerzel(e.von))}</span>` : ''}${stat}
+          <span class="s" style="display:block;font-size:13px;color:var(--muted)">${e.start != null ? `${uhr(e.start)}–${uhr(e.ende ?? e.start + e.minuten)} · ` : ''}${dauerT(e.minuten)} · ${eur(e.cent)}/h${e.notiz && !MA ? ' · ' + esc(e.notiz) : ''}${e.notizMa ? ' · „' + esc(e.notizMa) + '“' : ''}${grund}</span></span>
         <span class="amt num">${eur(betrag(e))}</span></button></div></div>`; }).join('');
   neuIds = new Set();
   el.querySelectorAll('.swipe').forEach(wischbar);
@@ -849,6 +961,11 @@ const kuerzel = n => n.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).t
 /* Wischen: links = loeschen, rechts = duplizieren; Tippen = bearbeiten; Halten = Aktionen */
 function wischbar(row){
   const fg = row.querySelector('.fg'), bg = row.querySelector('.bg'), id = row.dataset.id;
+  if(MA && !id.startsWith('m:')){ fg.onclick = () => toast(T('Bereits bestätigt – Änderungen nur durch den Arbeitgeber.')); return; }
+  const mid = MA ? id.slice(2) : null;
+  const eintragAktionen = id => mid ? meldAktionen(mid) : eintragAktionenAG(id);
+  const eintragLoeschen = id => mid ? meldLoeschen(mid) : eintragLoeschenAG(id);
+  const eintragDuplizieren = id => mid ? null : eintragDuplizierenAG(id);
   let x0 = 0, y0 = 0, dx = 0, aktiv = false, gesperrt = false, halten = null, gehalten = false, klickSperre = 0;
   fg.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; aktiv = false; gesperrt = false; gehalten = false;
     halten = setTimeout(() => { gehalten = true; tick(); eintragAktionen(id); }, 480); }, {passive:true});
@@ -871,24 +988,24 @@ function wischbar(row){
     else if(dx > 90){ fg.style.transform = ''; tick(); L.wischGelernt = 1; saveL(); eintragDuplizieren(id); }
     else fg.style.transform = '';
   });
-  fg.addEventListener('click', e => { if(Date.now() < klickSperre){ e.preventDefault(); return; } eintragSheet({id}); });
+  fg.addEventListener('click', e => { if(Date.now() < klickSperre){ e.preventDefault(); return; } eintragSheet(mid ? {meldId:mid} : {id}); });
   fg.addEventListener('contextmenu', e => { e.preventDefault(); eintragAktionen(id); });
 }
-function eintragAktionen(id){
+function eintragAktionenAG(id){
   const e = D.entries[id]; if(!e) return;
   aktionen(`${act(e.actId).name} · ${dauerT(e.minuten)}`, [
     {icon:'pencil', text:'Bearbeiten', fn:() => eintragSheet({id})},
-    {icon:'copy', text:'Duplizieren', fn:() => eintragDuplizieren(id)},
+    {icon:'copy', text:'Duplizieren', fn:() => eintragDuplizierenAG(id)},
     {icon:'calendar', text:'Auf anderen Tag kopieren …', fn:() => kopierenAuf(id)},
-    {icon:'trash', text:'Löschen', rot:true, farbe:'#B8483A', fn:() => eintragLoeschen(id)}
+    {icon:'trash', text:'Löschen', rot:true, farbe:'#B8483A', fn:() => eintragLoeschenAG(id)}
   ]);
 }
-function eintragLoeschen(id){
+function eintragLoeschenAG(id){
   const alt = D.entries[id]; if(!alt) return;
   delete D.entries[id]; save(); renderErfassen();
   toast(`${act(alt.actId).name} gelöscht`, 'Rückgängig', () => { D.entries[id] = alt; neuIds = new Set([id]); save(); renderErfassen(); });
 }
-function eintragDuplizieren(id, datum){
+function eintragDuplizierenAG(id, datum){
   const e = D.entries[id]; if(!e) return;
   const nid = uid(), d = datum || e.datum;
   D.entries[nid] = {...e, datum:d, cent: d === e.datum ? e.cent : satzAm(act(e.actId), d), von:L.name || '', erstellt:new Date().toISOString()};
@@ -899,7 +1016,7 @@ function eintragDuplizieren(id, datum){
 function kopierenAuf(id){
   oeffneSheet('Auf anderen Tag kopieren', `<div class="list"><div class="field"><label>Datum</label><input type="date" id="kpD" value="${plusTage(tag, 7)}"></div></div>
     <div class="btns"><button class="btn" id="kpOk">${icon('copy')}Kopieren</button></div>`, b => {
-    b.querySelector('#kpOk').onclick = () => { const d = b.querySelector('#kpD').value; if(!d) return; schliesseSheet(); eintragDuplizieren(id, d); };
+    b.querySelector('#kpOk').onclick = () => { const d = b.querySelector('#kpD').value; if(!d) return; schliesseSheet(); eintragDuplizierenAG(id, d); };
   });
 }
 
@@ -919,36 +1036,43 @@ function rad(el, werte, fmt, onChange){
 }
 const STD24 = [...Array(24).keys()], STD13 = [...Array(13).keys()], MIN5 = [...Array(12).keys()].map(i => i * 5);
 
-function eintragSheet({id, actId}){
+/* id = Eintrag bearbeiten; meldId = eigene Meldung bearbeiten (Mitarbeiter-App); pruef = {m, pid}: Meldung pruefen und uebernehmen */
+function eintragSheet({id, actId, meldId, pruef}){
+  const altM = meldId ? MELD.list[meldId] : null, pm = pruef ? pruef.m : null;
   const alt = id ? D.entries[id] : null;
-  const a0 = alt ? alt.actId : actId;
+  const a0 = alt ? alt.actId : altM ? altM.actId : pm ? pm.actId : actId;
   let vorbild = null;
-  for(const e of Object.values(D.entries)) if(e.actId === a0 && (!vorbild || e.datum > vorbild.datum || (e.datum === vorbild.datum && (e.erstellt || '') > (vorbild.erstellt || '')))) vorbild = e;
-  const st = alt ? {actId:a0, personId:alt.personId, datum:alt.datum, start:alt.start ?? null, minuten:alt.minuten, notiz:alt.notiz || ''}
-                 : {actId:a0, personId:aktPerson().id, datum:tag, start:vorbild ? vorbild.start ?? null : 9 * 60, minuten:vorbild ? vorbild.minuten : 120, notiz:''};
+  const kandidaten = Object.values(D.entries).concat(MA ? Object.values(MELD.list).filter(m => m.art === 'arbeit') : []);
+  for(const e of kandidaten) if(e.actId === a0 && (!vorbild || e.datum > vorbild.datum || (e.datum === vorbild.datum && (e.erstellt || '') > (vorbild.erstellt || '')))) vorbild = e;
+  const quelle = alt || altM || pm;
+  const st = quelle ? {actId:a0, personId:alt ? alt.personId : pm ? pruef.pid : aktPerson().id, datum:quelle.datum, start:quelle.start ?? null, minuten:quelle.minuten, notiz:(pm ? '' : quelle.notiz) || ''}
+                    : {actId:a0, personId:aktPerson().id, datum:tag, start:vorbild ? vorbild.start ?? null : 9 * 60, minuten:vorbild ? vorbild.minuten : 120, notiz:''};
   let feld = st.start != null ? 'start' : 'dauer';
   const satz = () => alt && alt.actId === st.actId && alt.datum === st.datum ? alt.cent : satzAm(act(st.actId), st.datum);
-  const ps = personen(), as = taetigkeiten();
+  const ps = MA || pm ? [] : personen(), as = taetigkeiten();
   const DAUERN = [60, 90, 120, 150, 180, 240];
+  const titel = () => pm ? `Meldung prüfen · ${tagText(st.datum)}` : alt ? 'Eintrag bearbeiten' : altM ? `${T('Bearbeiten')} · ${tagText(st.datum)}` : `${aNameId(st.actId)} · ${tagText(st.datum)}`;
 
-  oeffneSheet(alt ? 'Eintrag bearbeiten' : tagText(st.datum), `
+  oeffneSheet(titel(), `
     ${ps.length > 1 ? `<div class="chips" id="esP" style="margin:0 0 12px">${ps.map(p => `<button class="chip" data-p="${p.id}">${icon('user')}${esc(p.name)}</button>`).join('')}</div>` : ''}
-    <div class="quick" id="esA" style="margin:0 -16px 14px">${as.map(a => `<button class="chip" data-a="${a.id}" style="--tc:${a.farbe}">${icon(a.icon, 'color:' + a.farbe)}${esc(a.name)}</button>`).join('')}</div>
+    ${pm ? `<p class="hint" style="margin:0 4px 12px">${esc(pname(pruef.pid))} hat gemeldet: ${esc(act(pm.actId).name)} · ${pm.start != null ? uhr(pm.start) + '–' + uhr((pm.start + pm.minuten) % 1440) + ' · ' : ''}${dauerT(pm.minuten)}${pm.notiz ? ` · „${esc(pm.notiz)}“` : ''}</p>` : ''}
+    <div class="quick" id="esA" style="margin:0 -16px 14px">${as.map(a => `<button class="chip" data-a="${a.id}" style="--tc:${a.farbe}">${icon(a.icon, 'color:' + a.farbe)}${esc(aName(a))}</button>`).join('')}</div>
     <div class="tcards">
-      <button class="tcard" data-f="start"><small>Beginn</small><b class="num" id="vS"></b></button>
-      <button class="tcard" data-f="ende"><small>Ende</small><b class="num" id="vE"></b></button>
-      <button class="tcard" data-f="dauer"><small>Dauer</small><b class="num" id="vD"></b></button>
+      <button class="tcard" data-f="start"><small>${T('Beginn')}</small><b class="num" id="vS"></b></button>
+      <button class="tcard" data-f="ende"><small>${T('Ende')}</small><b class="num" id="vE"></b></button>
+      <button class="tcard" data-f="dauer"><small>${T('Dauer')}</small><b class="num" id="vD"></b></button>
     </div>
     <div class="wheels"><div class="wheel" id="wH"></div><span class="sep">:</span><div class="wheel" id="wM"></div><span class="unit" id="wU"></span></div>
-    <div class="notime"><span>Mit Uhrzeit</span><input type="checkbox" class="switch" id="esT"></div>
+    <div class="notime"><span>${T('Mit Uhrzeit')}</span><input type="checkbox" class="switch" id="esT"></div>
     <div class="chips" id="esC">${DAUERN.map(m => `<button class="chip" data-m="${m}">${m % 60 ? dauer(m) : m / 60 + ' h'}</button>`).join('')}
       <button class="chip" data-d="-15">−15</button><button class="chip" data-d="15">+15</button></div>
     <div class="calc"><span id="esF"></span><b class="num" id="esB"></b></div>
     <div class="list">
-      <div class="field"><label>Datum</label><input type="date" id="esDat" value="${st.datum}"></div>
-      <div class="field"><label>Notiz</label><input id="esN" placeholder="optional" value="${esc(st.notiz)}"></div>
+      <div class="field"><label>${T('Datum')}</label><input type="date" id="esDat" value="${st.datum}"></div>
+      <div class="field"><label>${pm ? 'Eigene Notiz' : T('Notiz')}</label><input id="esN" placeholder="${pm ? 'nur für euch sichtbar' : T('optional')}" value="${esc(st.notiz)}"></div>
     </div>
-    <div class="btns">${alt ? `<button class="btn ghost" id="esDel" style="flex:0 0 64px;color:var(--danger)">${icon('trash')}</button>` : ''}<button class="btn" id="esOk">${icon('check')}${alt ? 'Speichern' : 'Erfassen'}</button></div>`,
+    ${MA ? `<p class="hint">${T('Gemeldet, wartet auf Bestätigung')}${altM && D.meldStatus[altM.id]?.status === 'abgelehnt' ? ` · ${T('Diese Meldung wurde abgelehnt')}${D.meldStatus[altM.id].grund ? ': ' + esc(D.meldStatus[altM.id].grund) : ''}` : ''}</p>` : ''}
+    <div class="btns">${alt || altM ? `<button class="btn ghost" id="esDel" style="flex:0 0 64px;color:var(--danger)">${icon('trash')}</button>` : ''}<button class="btn" id="esOk">${icon('check')}${pm ? 'Übernehmen' : MA ? (altM && D.meldStatus[altM.id]?.status === 'abgelehnt' ? T('Erneut melden') : T(altM ? 'Speichern' : 'Melden')) : alt ? 'Speichern' : 'Erfassen'}</button></div>`,
   b => {
     const q = s => b.querySelector(s);
     let rH, rM;
@@ -979,7 +1103,7 @@ function eintragSheet({id, actId}){
       const s = satz();
       q('#esF').textContent = `${dauer(st.minuten)} h × ${eur(s)}/h`;
       zaehle(q('#esB'), Math.round(st.minuten * s / 60), eur, 450);
-      $('shTitle').textContent = alt ? 'Eintrag bearbeiten' : `${act(st.actId).name} · ${tagText(st.datum)}`;
+      $('shTitle').textContent = titel();
     }
     b.querySelectorAll('.tcard').forEach(c => c.onclick = () => {
       tick(); const f = c.dataset.f;
@@ -994,14 +1118,26 @@ function eintragSheet({id, actId}){
     const esP = q('#esP'); if(esP) esP.onclick = e => { const c = e.target.closest('[data-p]'); if(!c) return; tick(); st.personId = c.dataset.p; karten(); };
     q('#esDat').onchange = e => { if(e.target.value){ st.datum = e.target.value; karten(); } };
     q('#esN').oninput = e => st.notiz = e.target.value;
-    if(alt) q('#esDel').onclick = () => { schliesseSheet(); eintragLoeschen(id); };
+    if(alt) q('#esDel').onclick = () => { schliesseSheet(); eintragLoeschenAG(id); };
+    if(altM) q('#esDel').onclick = () => { schliesseSheet(); meldLoeschen(meldId); };
     q('#esOk').onclick = () => {
-      const s = satz(), n = act(st.actId).name;
-      const ueber = tagEintraege(st.datum, st.personId).find(e => e.id !== id && e.actId === st.actId &&
+      const s = satz(), n = aNameId(st.actId);
+      if(MA){
+        const mid = meldId || uid(), jetzt = new Date().toISOString();
+        MELD.list[mid] = {id:mid, art:'arbeit', datum:st.datum, actId:st.actId, start:st.start, minuten:st.minuten, notiz:st.notiz.trim(),
+          version: altM ? (altM.version || 1) + 1 : 1, erstellt: altM ? altM.erstellt : jetzt, ...(altM ? {geaendert:jetzt} : {})};
+        tag = st.datum; neuIds = new Set(['m:' + mid]); saveMeld(); schliesseSheet(); renderErfassen(true); tick();
+        toast(`${n}: ${dauerT(st.minuten)} · ${eur(Math.round(st.minuten * s / 60))} · ${T('Gemeldet')}`);
+        return;
+      }
+      const ziel = pm ? meldZiel(pm) : null;
+      const ueber = tagEintraege(st.datum, st.personId).find(e => e.id !== id && e.id !== ziel && e.actId === st.actId &&
         (st.start == null || e.start == null || (st.start < e.start + e.minuten && e.start < st.start + st.minuten)));
       if(ueber && !confirm(`Am ${dm(st.datum)} ist „${n}“ schon erfasst${ueber.von ? ` (von ${ueber.von})` : ''}: ${ueber.start != null ? uhr(ueber.start) + ', ' : ''}${dauerT(ueber.minuten)}.\n\nTrotzdem speichern?`)) return;
+      if(pm){ meldUebernehmen(pm, pruef.pid, st); schliesseSheet(); return; }
       const nid = id || uid();
-      D.entries[nid] = {datum:st.datum, personId:st.personId, actId:st.actId, start:st.start, ende:st.start != null ? (st.start + st.minuten) % 1440 : null,
+      D.entries[nid] = {...(alt && alt.quelle ? {quelle:alt.quelle, notizMa:alt.notizMa || '', bestaetigt:alt.bestaetigt || ''} : {}),
+        datum:st.datum, personId:st.personId, actId:st.actId, start:st.start, ende:st.start != null ? (st.start + st.minuten) % 1440 : null,
         minuten:st.minuten, cent:s, notiz:st.notiz.trim(), von: alt ? alt.von : (L.name || ''), erstellt: alt ? alt.erstellt : new Date().toISOString(),
         ...(alt ? {geaendert:new Date().toISOString()} : {})};
       tag = st.datum; neuIds = new Set([nid]); save(); schliesseSheet(); renderErfassen(true); tick();
@@ -1025,15 +1161,18 @@ function renderKonto(){
   kopf();
   const p = aktPerson();
   personenWahl($('personSel'), renderKonto);
-  $('txQuick').innerHTML = Object.entries(TX).map(([k, t]) => `<button data-t="${k}"><span class="bubble" style="color:${t.farbe}">${icon(t.icon)}</span>${t.kurz}</button>`).join('');
+  $('txQuick').innerHTML = MA ? `<button data-t="auslage" style="grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;font-size:14px"><span class="bubble" style="color:${TX.auslage.farbe};width:40px;height:40px;border-radius:13px">${icon('receipt')}</span>${T('Auslage melden')}</button>`
+    : Object.entries(TX).map(([k, t]) => `<button data-t="${k}"><span class="bubble" style="color:${t.farbe}">${icon(t.icon)}</span>${t.kurz}</button>`).join('');
+  renderMaOffen();
   if(!p){
-    $('balLbl').textContent = 'Noch keine Person angelegt'; $('balVal').textContent = eur(0); $('balFacts').innerHTML = ''; $('balSpark').innerHTML = '';
+    $('balLbl').textContent = MA ? T('Warte auf den ersten Abgleich …') : 'Noch keine Person angelegt'; $('balVal').textContent = eur(0); $('balFacts').innerHTML = ''; $('balSpark').innerHTML = '';
     $('ledger').innerHTML = `<div class="empty">${icon('users')}Lege zuerst in den Einstellungen eine Person an.</div>`; return;
   }
-  const s = saldo(p.id);
+  const vorl = MA ? vorlaeufig() : 0, s = saldo(p.id) + vorl;
   const bal = $('balance');
   bal.dataset.dir = s > 0 ? 'plus' : s < 0 ? 'minus' : 'zero';
-  $('balLbl').textContent = s > 0 ? `Offen an ${p.name}` : s < 0 ? `${p.name} schuldet euch` : `Mit ${p.name} ausgeglichen`;
+  $('balLbl').textContent = MA ? T(s > 0 ? 'Sie schulden dir' : s < 0 ? 'Du schuldest' : 'Ausgeglichen')
+    : s > 0 ? `Offen an ${p.name}` : s < 0 ? `${p.name} schuldet euch` : `Mit ${p.name} ausgeglichen`;
   zaehle($('balVal'), Math.abs(s), eur, 1100);
 
   // Verlauf der letzten 90 Tage als Sparkline
@@ -1050,7 +1189,8 @@ function renderKonto(){
   const mE = eintraege(e => e.personId === p.id && e.datum >= mStart);
   const mZ = buchungen(t => t.personId === p.id && t.datum >= mStart && t.typ === 'auszahlung');
   $('balFacts').innerHTML = `<div>${MON[+mStart.slice(5,7)-1]}<b>${eur(mE.reduce((a, e) => a + betrag(e), 0))}</b></div>
-    <div>Stunden<b>${dauer(mE.reduce((a, e) => a + e.minuten, 0))}</b></div><div>Ausgezahlt<b>${eur(mZ.reduce((a, t) => a + t.cent, 0))}</b></div>`;
+    <div>${T('Stunden')}<b>${dauer(mE.reduce((a, e) => a + e.minuten, 0))}</b></div>` +
+    (MA ? `<div>${T('davon vorläufig')}<b>${eur(vorl)}</b></div>` : `<div>Ausgezahlt<b>${eur(mZ.reduce((a, t) => a + t.cent, 0))}</b></div>`);
 
   // Verlauf: Arbeit je Tag zusammengefasst + Buchungen, mit laufendem Saldo
   const posten = [];
@@ -1062,7 +1202,7 @@ function renderKonto(){
   posten.sort((a, b) => a.datum.localeCompare(b.datum) || (a.art === 'arbeit' ? -1 : 1) || (a.sortKey || '').localeCompare(b.sortKey || ''));
   let lauf = 0; posten.forEach(x => { lauf += x.wert; x.lauf = lauf; });
   posten.reverse();
-  if(!posten.length){ $('ledger').innerHTML = `<div class="empty">${icon('wallet')}Noch keine Buchungen.</div>`; return; }
+  if(!posten.length){ $('ledger').innerHTML = `<div class="empty">${icon('wallet')}${T('Noch keine Buchungen.')}</div>`; return; }
   const grenze = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - ktoMonate + 1); return iso(d); })();
   const sichtbar = posten.filter(x => x.datum >= grenze);
   const gruppen = {};
@@ -1071,12 +1211,12 @@ function renderKonto(){
     <div class="mhead"><span>${MON[+mk.slice(5)-1]} ${mk.slice(0,4)}</span><span class="num">${eurS(xs.reduce((a, x) => a + x.wert, 0))}</span></div>` +
     xs.map(x => x.art === 'arbeit'
       ? `<button class="row tx" data-day="${x.datum}"><span class="bubble" style="background:var(--sage-soft);color:var(--sage-d)">${ringMini([...x.farben])}</span>
-          <span class="grow"><span class="t">Arbeit</span><span class="s">${WT[wtag(x.datum)]} ${dm(x.datum)} · ${dauerT(x.min)} · ${x.n} ${x.n === 1 ? 'Eintrag' : 'Einträge'}</span></span>
+          <span class="grow"><span class="t">${T('Arbeit')}</span><span class="s">${WT[wtag(x.datum)]} ${dm(x.datum)} · ${dauerT(x.min)} · ${anz(x.n, 'Eintrag')}</span></span>
           <span style="text-align:right"><span class="amt num plus" style="display:block;font-weight:700">${eurS(x.wert)}</span><span class="run num">${eur(x.lauf)}</span></span></button>`
       : `<button class="row tx" data-tx="${x.t.id}"><span class="bubble" style="background:${TX[x.t.typ].farbe}22;color:${TX[x.t.typ].farbe}">${icon(TX[x.t.typ].icon)}</span>
-          <span class="grow"><span class="t">${TX[x.t.typ].name}</span><span class="s">${WT[wtag(x.datum)]} ${dm(x.datum)}${x.t.zahlart ? ' · ' + esc(x.t.zahlart) : ''}${x.t.notiz ? ' · ' + esc(x.t.notiz) : ''}${x.t.von ? ` <span class="who">${esc(kuerzel(x.t.von))}</span>` : ''}</span></span>
+          <span class="grow"><span class="t">${T(TX[x.t.typ].name)}</span><span class="s">${WT[wtag(x.datum)]} ${dm(x.datum)}${x.t.zahlart ? ' · ' + esc(T(x.t.zahlart)) : ''}${x.t.notiz && !MA ? ' · ' + esc(x.t.notiz) : ''}${x.t.notizMa ? ' · „' + esc(x.t.notizMa) + '“' : ''}${x.t.von ? ` <span class="who">${esc(kuerzel(x.t.von))}</span>` : ''}</span></span>
           <span style="text-align:right"><span class="amt num ${x.wert >= 0 ? 'plus' : 'minus'}" style="display:block;font-weight:700">${eurS(x.wert)}</span><span class="run num">${eur(x.lauf)}</span></span></button>`).join('')
-  ).join('') + (sichtbar.length < posten.length ? `<button class="row" id="mehr" style="justify-content:center;color:var(--terra);font-weight:600">Ältere anzeigen</button>` : '');
+  ).join('') + (sichtbar.length < posten.length ? `<button class="row" id="mehr" style="justify-content:center;color:var(--terra);font-weight:600">${T('Ältere anzeigen')}</button>` : '');
 }
 const ringMini = farben => `<svg viewBox="0 0 24 24" width="22" height="22">${farben.slice(0, 4).map((c, i, a) => { const U = 2 * Math.PI * 8, l = U / a.length;
   return `<circle cx="12" cy="12" r="8" fill="none" stroke="${c}" stroke-width="4" stroke-dasharray="${l - (a.length > 1 ? 1.2 : 0)} ${U}" stroke-dashoffset="${-l * i}" transform="rotate(-90 12 12)"/>`; }).join('')}</svg>`;
@@ -1084,18 +1224,20 @@ $('ledger').onclick = e => {
   const r = e.target.closest('.row'); if(!r) return; tick();
   if(r.id === 'mehr'){ ktoMonate += 3; renderKonto(); return; }
   if(r.dataset.day){ tag = r.dataset.day; zeigeTab('erf'); return; }
-  if(r.dataset.tx) buchungSheet({id: r.dataset.tx});
+  if(r.dataset.tx && !MA) buchungSheet({id: r.dataset.tx});
 };
 $('txQuick').onclick = e => { const b = e.target.closest('[data-t]'); if(!b) return; tick();
+  if(MA) return aktPerson() && auslageSheet({});
   if(!aktPerson()) return personBearbeiten(null, renderKonto); buchungSheet({typ: b.dataset.t}); };
 
-function buchungSheet({id, typ}){
-  const alt = id ? D.txs[id] : null, p = aktPerson();
-  const st = alt ? {...alt} : {typ, cent:0, datum:heute(), personId:p.id, zahlart:'bar', notiz:''};
+function buchungSheet({id, typ, pruef}){
+  const alt = id ? D.txs[id] : null, p = aktPerson(), pm = pruef && pruef.m;
+  const st = alt ? {...alt} : pm ? {typ:'auslage', cent:pm.cent, datum:pm.datum, personId:pruef.pid, zahlart:'bar', notiz:''} : {typ, cent:0, datum:heute(), personId:p.id, zahlart:'bar', notiz:''};
   const vorher = saldo(st.personId);
   if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = vorher;           // Vorschlag: alles Offene auszahlen
   let vz = alt && alt.typ === 'korrektur' ? (alt.cent < 0 ? -1 : 1) : 1;
-  oeffneSheet(alt ? 'Buchung bearbeiten' : TX[st.typ].name, `
+  oeffneSheet(pm ? 'Auslage prüfen' : alt ? 'Buchung bearbeiten' : TX[st.typ].name, `
+    ${pm ? `<p class="hint" style="margin:0 4px 12px">${esc(pname(pruef.pid))} hat gemeldet: ${eur(pm.cent)} am ${dm(pm.datum)}${pm.notiz ? ` · „${esc(pm.notiz)}“` : ''}</p>` : ''}
     <div class="typegrid" id="bT">${Object.entries(TX).map(([k, t]) => `<button data-t="${k}"><span class="bubble" style="background:${t.farbe}22;color:${t.farbe}">${icon(t.icon)}</span>${t.name}</button>`).join('')}</div>
     <div class="amtin"><input id="bA" inputmode="decimal" placeholder="0,00" value="${st.cent ? centZuEuro(Math.abs(st.cent)) : ''}"><span style="font-family:var(--round);font-size:30px;font-weight:800;color:var(--muted)">€</span></div>
     <div class="chips hidden" id="bV" style="justify-content:center;margin:0 0 6px"><button class="chip" data-v="1">${icon('plus')}Guthaben ${esc(pname(st.personId))}</button><button class="chip" data-v="-1">${icon('minus')}Schuld ${esc(pname(st.personId))}</button></div>
@@ -1116,7 +1258,7 @@ function buchungSheet({id, typ}){
       b.querySelectorAll('#bV .chip').forEach(x => x.classList.toggle('on', +x.dataset.v === vz));
       const n = neuSaldo();
       q('#bH').innerHTML = TX[st.typ].hilfe.replace('{p}', esc(pname(st.personId))) + `<br>Saldo danach: <b class="num">${n > 0 ? 'offen ' + eur(n) : n < 0 ? 'Schuld ' + eur(-n) : 'ausgeglichen'}</b>`;
-      if(!alt) $('shTitle').textContent = TX[st.typ].name;
+      if(!alt && !pm) $('shTitle').textContent = TX[st.typ].name;
     };
     q('#bT').onclick = e => { const x = e.target.closest('[data-t]'); if(!x) return; tick(); st.typ = x.dataset.t; zeig(); };
     q('#bV').onclick = e => { const x = e.target.closest('[data-v]'); if(!x) return; tick(); vz = +x.dataset.v; zeig(); };
@@ -1131,7 +1273,8 @@ function buchungSheet({id, typ}){
       const c = euroZuCent(q('#bA').value);
       if(!c || c < 0){ q('#bA').focus(); q('#bA').style.color = 'var(--danger)'; setTimeout(() => q('#bA').style.color = '', 600); return; }
       const n = neuSaldo();
-      D.txs[id || uid()] = {typ:st.typ, cent: st.typ === 'korrektur' ? vz * c : c, datum:q('#bD').value || heute(), personId:st.personId,
+      if(pm){ meldUebernehmen(pm, pruef.pid, {typ:st.typ, cent: st.typ === 'korrektur' ? vz * c : c, datum:q('#bD').value || pm.datum, zahlart:q('#bZ').value, notiz:q('#bN').value.trim()}); schliesseSheet(); return; }
+      D.txs[id || uid()] = {...(alt && alt.quelle ? {quelle:alt.quelle, notizMa:alt.notizMa || '', bestaetigt:alt.bestaetigt || ''} : {}),typ:st.typ, cent: st.typ === 'korrektur' ? vz * c : c, datum:q('#bD').value || heute(), personId:st.personId,
         zahlart:q('#bZ').value, notiz:q('#bN').value.trim(), von: alt ? alt.von : (L.name || ''), erstellt: alt ? alt.erstellt : new Date().toISOString(),
         ...(alt ? {geaendert:new Date().toISOString()} : {})};
       save(); schliesseSheet(); renderKonto(); tick();
@@ -1151,9 +1294,9 @@ const monatPlus = (a, n) => { let y = +a.slice(0,4), m = +a.slice(5,7) - 1 + n; 
 const monatsEnde = a => plusTage(monatPlus(a, 1), -1);
 function bereich(p, a){
   const y = a.slice(0,4), m = +a.slice(5,7);
-  if(p === 'w'){ const v = montag(a), b = plusTage(v, 6); return {von:v, bis:b, lbl:`KW ${kw(a)} · ${dm(v)}–${dm(b)}`}; }
+  if(p === 'w'){ const v = montag(a), b = plusTage(v, 6); return {von:v, bis:b, lbl:`${T('KW')} ${kw(a)} · ${dm(v)}–${dm(b)}`}; }
   if(p === 'm'){ const v = a.slice(0,8) + '01'; return {von:v, bis:monatsEnde(v), lbl:`${MON[m-1]} ${y}`}; }
-  if(p === 'q'){ const qi = Math.floor((m - 1) / 3), v = `${y}-${pad(qi * 3 + 1)}-01`; return {von:v, bis:monatsEnde(monatPlus(v, 2)), lbl:`${qi + 1}. Quartal ${y}`}; }
+  if(p === 'q'){ const qi = Math.floor((m - 1) / 3), v = `${y}-${pad(qi * 3 + 1)}-01`; return {von:v, bis:monatsEnde(monatPlus(v, 2)), lbl:`${qi + 1}. ${T('Quartal')} ${y}`}; }
   return {von:`${y}-01-01`, bis:`${y}-12-31`, lbl:y};
 }
 const schiebe = (p, a, n) => p === 'w' ? plusTage(a, 7 * n) : monatPlus(a, n * (p === 'm' ? 1 : p === 'q' ? 3 : 12));
@@ -1174,7 +1317,7 @@ function renderAuswertung(){
   const r = bereich(per.p, per.anker), p = aktPerson(), pid = p?.id;
   $('pLbl').textContent = r.lbl;
   $('pPrev').innerHTML = icon('chevL'); $('pNext').innerHTML = icon('chevR');
-  if(!p){ $('ausBody').innerHTML = `<div class="card empty">${icon('chart')}Noch keine Daten.</div>`; return; }
+  if(!p){ $('ausBody').innerHTML = `<div class="card empty">${icon('chart')}${T('Noch keine Daten.')}</div>`; return; }
   const es = eintraege(e => e.personId === pid && e.datum >= r.von && e.datum <= r.bis);
   const ts = buchungen(t => t.personId === pid && t.datum >= r.von && t.datum <= r.bis);
   const cent = es.reduce((a, e) => a + betrag(e), 0), min = es.reduce((a, e) => a + e.minuten, 0);
@@ -1196,7 +1339,7 @@ function renderAuswertung(){
     if(x.sum){ const top = H - B0 - x.sum / max * (H - B0 - 8), rr = Math.min(5, breite / 2.5);
       bars += `<clipPath id="cb${i}"><path d="M${xx},${H - B0} V${top + rr} Q${xx},${top} ${xx + rr},${top} H${xx + breite - rr} Q${xx + breite},${top} ${xx + breite},${top + rr} V${H - B0}Z"/></clipPath><g class="b" clip-path="url(#cb${i})" style="animation-delay:${i * 18}ms">`;
       as.forEach(a => { const v = x.pa[a.id]; if(!v) return; const h = v / max * (H - B0 - 8); y -= h;
-        bars += `<rect x="${xx.toFixed(1)}" y="${(y - .3).toFixed(1)}" width="${breite.toFixed(1)}" height="${(h + .3).toFixed(1)}" fill="${a.farbe}"><title>${esc(a.name)}: ${eur(v)}</title></rect>`; });
+        bars += `<rect x="${xx.toFixed(1)}" y="${(y - .3).toFixed(1)}" width="${breite.toFixed(1)}" height="${(h + .3).toFixed(1)}" fill="${a.farbe}"><title>${esc(aName(a))}: ${eur(v)}</title></rect>`; });
       bars += '</g>'; }
     if(x.lbl) bars += `<text x="${(L0 + i * bw + bw / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle">${x.lbl}</text>`;
     if(x.von <= heute() && heute() <= x.bis && ei.length > 1) bars += `<circle cx="${(L0 + i * bw + bw / 2).toFixed(1)}" cy="${H - B0 + 3}" r="1.6" fill="var(--terra)"/>`; });
@@ -1228,27 +1371,27 @@ function renderAuswertung(){
   $('ausBody').innerHTML = `
     ${personen().length > 1 ? `<p class="sub">${icon('user', 'width:15px;height:15px;display:inline;vertical-align:-2px')} ${esc(p.name)}</p>` : ''}
     <div class="kpis">
-      <div class="kpi"><small>${icon('coin')}Verdienst</small><b class="num" id="kV"></b><span>${trend == null ? '&nbsp;' : `${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend)} % zur Vorperiode`}</span></div>
-      <div class="kpi"><small>${icon('clock')}Stunden</small><b class="num">${dauer(min)}</b><span>${es.length} ${es.length === 1 ? 'Eintrag' : 'Einträge'}</span></div>
-      <div class="kpi"><small>${icon('calendar')}Einsatztage</small><b class="num">${tage}</b><span>Ø ${tage ? eur(Math.round(cent / tage)) : '–'} pro Tag</span></div>
-      <div class="kpi"><small>${icon('banknote')}Ausgezahlt</small><b class="num">${eur(aus)}</b><span>${ts.length} ${ts.length === 1 ? 'Buchung' : 'Buchungen'}</span></div>
+      <div class="kpi"><small>${icon('coin')}${T('Verdienst')}</small><b class="num" id="kV"></b><span>${trend == null ? '&nbsp;' : `${trend >= 0 ? '▲' : '▼'} ${Math.abs(trend)} % ${T('zur Vorperiode')}`}</span></div>
+      <div class="kpi"><small>${icon('clock')}${T('Stunden')}</small><b class="num">${dauer(min)}</b><span>${anz(es.length, 'Eintrag')}</span></div>
+      <div class="kpi"><small>${icon('calendar')}${T('Einsatztage')}</small><b class="num">${tage}</b><span>Ø ${tage ? eur(Math.round(cent / tage)) : '–'} ${T('pro Tag')}</span></div>
+      <div class="kpi"><small>${icon('banknote')}${T('Ausgezahlt')}</small><b class="num">${eur(aus)}</b><span>${anz(ts.length, 'Buchung')}</span></div>
     </div>
     <div class="card" style="margin-top:10px;display:flex;align-items:center;gap:12px">
       <span class="bubble" style="background:${sE > 0 ? 'var(--sage-soft)' : sE < 0 ? 'var(--terra-soft)' : 'var(--ochre-soft)'};color:${sE > 0 ? 'var(--sage-d)' : sE < 0 ? 'var(--terra)' : 'var(--ochre)'}">${icon('scale')}</span>
-      <span style="flex:1"><span style="font-size:13px;color:var(--muted)">Saldo am ${dm(r.bis)}</span><b class="num" style="display:block;font-size:20px">${sE > 0 ? 'offen ' + eur(sE) : sE < 0 ? 'Schuld ' + eur(-sE) : 'ausgeglichen'}</b></span>
+      <span style="flex:1"><span style="font-size:13px;color:var(--muted)">${T('Saldo am')} ${dm(r.bis)}</span><b class="num" style="display:block;font-size:20px">${sE > 0 ? T('offen') + ' ' + eur(sE) : sE < 0 ? T('Schuld') + ' ' + eur(-sE) : T('ausgeglichen')}</b></span>
       <span class="num" style="font-size:13px;color:var(--muted)">${eurS(sE - sA)}</span>
     </div>
-    <h2>Verlauf</h2>
-    <div class="card">${cent ? `<svg class="chart" viewBox="0 0 ${W} ${H}">${grid}${bars}</svg>` : `<div class="empty" style="padding:30px 0">${icon('chart')}Keine Einträge in diesem Zeitraum.</div>`}</div>
-    ${proA.length ? `<h2>Nach Tätigkeit</h2>
+    <h2>${T('Verlauf')}</h2>
+    <div class="card">${cent ? `<svg class="chart" viewBox="0 0 ${W} ${H}">${grid}${bars}</svg>` : `<div class="empty" style="padding:30px 0">${icon('chart')}${T('Keine Einträge in diesem Zeitraum.')}</div>`}</div>
+    ${proA.length ? `<h2>${T('Nach Tätigkeit')}</h2>
     <div class="card donut"><svg viewBox="0 0 132 132"><circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--bg2)" stroke-width="16"/>${ring}
       <text x="66" y="64" text-anchor="middle" font-size="15" font-weight="800" fill="var(--text)" font-family="ui-rounded,-apple-system,sans-serif">${eur(cent).replace(/,\d\d/, '')}</text>
       <text x="66" y="80" text-anchor="middle" font-size="10" fill="var(--muted)">${dauer(min)} h</text></svg>
-      <div class="legend">${proA.map(x => `<div><i style="background:${x.a.farbe}"></i><span>${esc(x.a.name)}</span><b class="num">${eur(x.c)}</b></div><div style="margin:-6px 0 0 18px;font-size:11.5px;color:var(--muted)">${dauerT(x.m)} · ${cent ? Math.round(x.c / cent * 100) : 0} %</div>`).join('')}</div></div>` : ''}
-    ${linie ? `<h2>Saldo-Verlauf</h2><div class="card">${linie}</div>` : ''}
-    <h2>Jahr ${r.von.slice(0,4)} im Überblick</h2>
+      <div class="legend">${proA.map(x => `<div><i style="background:${x.a.farbe}"></i><span>${esc(aName(x.a))}</span><b class="num">${eur(x.c)}</b></div><div style="margin:-6px 0 0 18px;font-size:11.5px;color:var(--muted)">${dauerT(x.m)} · ${cent ? Math.round(x.c / cent * 100) : 0} %</div>`).join('')}</div></div>` : ''}
+    ${linie ? `<h2>${T('Saldo-Verlauf')}</h2><div class="card">${linie}</div>` : ''}
+    <h2>${T('Jahr')} ${r.von.slice(0,4)} ${T('im Überblick')}</h2>
     <div class="card">${heatmap(r.von.slice(0,4), pid)}</div>
-    <div class="btns" style="margin-top:18px"><button class="btn ghost" id="csvBtn">${icon('share')}Zeitraum als CSV exportieren</button></div>`;
+    <div class="btns" style="margin-top:18px"><button class="btn ghost" id="csvBtn">${icon('share')}${T('Zeitraum als CSV exportieren')}</button></div>`;
   zaehle($('kV'), cent, eur, 900);
   $('csvBtn').onclick = () => csvExport(r, pid);
   const hm = $('ausBody').querySelector('.heat'); if(hm){ const t = hm.querySelector('.t') || hm.querySelector(`[data-d="${r.von}"]`); if(t) hm.scrollLeft = t.offsetLeft - hm.clientWidth / 2; }
@@ -1267,7 +1410,7 @@ function heatmap(jahr, pid){
     d = plusTage(d, 7);
   }
   return `<div class="heatwrap"><div class="wd"><span></span>${WT.map((w, i) => `<span>${i % 2 ? '' : w}</span>`).join('')}</div><div class="heat">${html}</div></div>
-    <div class="heatleg">weniger <i style="background:var(--bg2)"></i>${[22, 42, 68, 100].map(s => `<i style="background:color-mix(in srgb,var(--terra) ${s}%,var(--bg2))"></i>`).join('')} mehr</div>`;
+    <div class="heatleg">${T('weniger')} <i style="background:var(--bg2)"></i>${[22, 42, 68, 100].map(s => `<i style="background:color-mix(in srgb,var(--terra) ${s}%,var(--bg2))"></i>`).join('')} ${T('mehr')}</div>`;
 }
 $('ausBody').addEventListener('click', e => { const c = e.target.closest('.heat i[data-d]'); if(!c || c.classList.contains('out')) return; tick(); tag = c.dataset.d; zeigeTab('erf'); });
 function segKnopf(){ const on = $('seg').querySelector('button.on'), k = $('seg').querySelector('.knob'); if(on){ k.style.left = on.offsetLeft + 'px'; k.style.width = on.offsetWidth + 'px'; } }
@@ -1325,7 +1468,13 @@ function renderEinstellungen(){
     <span class="grow"><span class="t">${esc(t.name)}</span><span class="s">${t.posten.map(x => esc(act(x.actId).name) + ' ' + dauerT(x.minuten)).join(' · ')}</span></span>${icon('chevR').replace('class="ic"', 'class="ic chev"')}</button>`).join('')
     : `<div class="empty" style="padding:16px">Noch keine Vorlage.</div>`;
   renderSnaps();
+  if(MA){ const ax = sync.ax || {}, p = aktPerson();
+    $('c_sprache').value = L.sprache || 'de';
+    $('maWer').textContent = `${T('Du bist angemeldet als')} ${p ? p.name : '–'}`;
+    $('maStand').textContent = SP && SP.meta ? `${T('Stand der Daten')}: ${new Date(SP.meta.erstellt).toLocaleString(L.sprache === 'ru' ? 'ru-RU' : 'de-DE')}` : T('Warte auf den ersten Abgleich …');
+    $('maMsg').textContent = ax.repo ? syncFehler || '' : T('Noch nicht verbunden'); }
 }
+$('c_sprache').onchange = e => { L.sprache = e.target.value; saveL(); spracheAnwenden(); renderAlles(); };
 $('c_appName').onchange = e => { D.cfg.appName = e.target.value.trim(); save(); kopf(); };
 $('c_geraet').onchange = e => { L.name = e.target.value.trim(); saveL(); kopf(); };
 $('c_theme').onchange = e => { L.theme = e.target.value; saveL(); thema(); };
@@ -1343,10 +1492,12 @@ function personBearbeiten(id, nachher){
   oeffneSheet(alt ? 'Person bearbeiten' : 'Neue Person', `
     <div class="list"><div class="field"><label>Name</label><input id="pN" value="${esc(alt?.name || '')}" placeholder="Name"></div>
     ${alt ? `<div class="field"><label>Archiviert</label><span style="flex:1"></span><input type="checkbox" class="switch" id="pA"${alt.archiviert ? ' checked' : ''}></div>` : ''}</div>
+    ${alt ? `<div class="list" style="margin-top:12px"><button class="row" id="pAx"><span class="bubble" style="background:var(--sage-soft);color:var(--sage-d)">${icon('qr')}</span><span class="grow"><span class="t">Eigene App für ${esc(alt.name)}</span><span class="s">${D.cfg.austausch && D.cfg.austausch[id] ? 'eingerichtet · ' + esc(D.cfg.austausch[id].repo) : 'Zeiten selbst melden, ihr bestätigt'}</span></span>${icon('chevR').replace('class="ic"', 'class="ic chev"')}</button></div>` : ''}
     <p class="hint">Für wen Zeiten erfasst werden. Der Name steht nur in den verschlüsselten Daten, nie im Code.</p>
     <div class="btns">${alt ? `<button class="btn ghost" id="pDel" style="flex:0 0 64px;color:var(--danger)">${icon(benutzt ? 'archive' : 'trash')}</button>` : ''}<button class="btn" id="pOk">${icon('check')}Speichern</button></div>`, b => {
     const q = s => b.querySelector(s);
     if(!alt) setTimeout(() => q('#pN').focus(), 400);
+    if(alt) q('#pAx').onclick = () => { schliesseSheet(); setTimeout(() => austauschSheet(id), 150); };
     q('#pOk').onclick = () => { const name = q('#pN').value.trim(); if(!name) return q('#pN').focus();
       const pid = id || uid();
       D.persons[pid] = {...(alt || {erstellt:new Date().toISOString(), sort:personen(true).length}), name, archiviert: alt ? q('#pA').checked : false};
@@ -1366,6 +1517,7 @@ function taetigkeitBearbeiten(id, nachher){
     <div style="display:flex;justify-content:center;margin:4px 0 16px"><div class="tile" id="tPrev" style="width:130px;pointer-events:none"></div></div>
     <div class="list">
       <div class="field"><label>Name</label><input id="tN" value="${esc(st.name)}" placeholder="Bezeichnung"></div>
+      <div class="field"><label>Name (russisch)</label><input id="tR" value="${esc(st.nameRu || '')}" placeholder="optional, für die eigene App" lang="ru"></div>
       ${alt ? '' : `<div class="field"><label>Stundensatz</label><input id="tS" inputmode="decimal" placeholder="0,00 €"></div>`}
     </div>
     ${alt ? `<h2>Stundensätze</h2><div class="list" id="tSL"></div>
@@ -1410,6 +1562,7 @@ function taetigkeitBearbeiten(id, nachher){
       if(!alt){ const c = euroZuCent(q('#tS').value); if(!c) return q('#tS').focus(); st.saetze = [{ab:SEIT_IMMER, cent:c}]; }
       if(!st.saetze.length) return;
       const aid = id || uid();
+      const nameRu = q('#tR').value.trim(); if(nameRu) st.nameRu = nameRu; else delete st.nameRu;
       D.acts[aid] = {...st, name, archiviert: alt ? q('#tA').checked : false, erstellt: st.erstellt || new Date().toISOString(), sort: st.sort ?? n};
       delete D.acts[aid].id;
       if(alt){
@@ -1481,7 +1634,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1503,6 +1656,7 @@ async function idbTx(store, mode, fn){ const db = await idb(); return new Promis
 const kvGet = k => idbTx('kv', 'readonly', st => st.get(k));
 const kvSet = (k, v) => idbTx('kv', 'readwrite', st => st.put(v, k));
 async function lokaleKopie(zusatz = ''){
+  if(MA) return;
   try{
     if(!anzahl(D)) return;
     const data = backupDaten();
@@ -1545,7 +1699,7 @@ $('impJson').onchange = async e => {
 /* --- Online --- */
 let sync = load(LS.sync, {});
 const saveSync = () => localStorage.setItem(LS.sync, JSON.stringify(sync));
-const syncAktiv = () => !!(sync.repo && sync.token && sync.pw);
+const syncAktiv = () => MA ? !!(sync.ax && sync.ax.repo) : !!(sync.repo && sync.token && sync.pw);
 const SYNC_DATEI = 'zeitabrechnung_backup.json';
 const b64 = buf => { const u = new Uint8Array(buf); let s = ''; for(let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -1571,12 +1725,26 @@ async function entschluesseln(datei){
     const data = JSON.parse(new TextDecoder().decode(pt)); data.meta = {...data.meta, geraet: datei.meta && datei.meta.geraet}; return data;
   }catch(err){ throw new Error('Entschlüsseln fehlgeschlagen – Passwort falsch?'); }
 }
-async function gh(method, body){
-  const res = await fetch(`https://api.github.com/repos/${sync.repo}/contents/${SYNC_DATEI}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
-    method, cache:'no-store', headers:{Authorization:'Bearer ' + sync.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
+/* Allgemein: verschluesseln / entschluesseln mit beliebigem Passwort (Austausch-Dateien) */
+async function aesVer(obj, pw, saltB64){
+  const iv = crypto.getRandomValues(new Uint8Array(12)), key = await schluessel(pw, unb64(saltB64));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return {alg:'AES-GCM-256', kdf:'PBKDF2-SHA256', iter:PBKDF2_ITER, salt:saltB64, iv:b64(iv), data:b64(ct)};
+}
+async function aesEnt(e, pw){
+  if(!e || e.alg !== 'AES-GCM-256') throw new Error('Unbekanntes Dateiformat.');
+  try{ const key = await schluessel(pw, unb64(e.salt));
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(e.iv)}, key, unb64(e.data))));
+  }catch(err){ throw new Error('Entschlüsseln fehlgeschlagen – Passwort falsch?'); }
+}
+const ghInhalt = r => JSON.parse(new TextDecoder().decode(unb64(r.content.replace(/\s/g, ''))));
+const gh = (method, body) => ghDatei(sync, SYNC_DATEI, method, body);
+async function ghDatei(ziel, pfad, method, body){
+  const res = await fetch(`https://api.github.com/repos/${ziel.repo}/contents/${pfad}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
+    method, cache:'no-store', headers:{Authorization:'Bearer ' + ziel.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
     body: body && JSON.stringify(body)});
   if(method === 'GET' && res.status === 404){
-    const r = await fetch(`https://api.github.com/repos/${sync.repo}`, {cache:'no-store', headers:{Authorization:'Bearer ' + sync.token}});
+    const r = await fetch(`https://api.github.com/repos/${ziel.repo}`, {cache:'no-store', headers:{Authorization:'Bearer ' + ziel.token}});
     if(!r.ok) throw new Error(r.status === 401 ? 'Token ungültig oder abgelaufen.' : 'Repo nicht gefunden oder Token hat keinen Zugriff.');
     return null;
   }
@@ -1588,9 +1756,10 @@ async function gh(method, body){
 const kanon = v => v === undefined ? '~' : v === null || typeof v !== 'object' ? JSON.stringify(v)
   : Array.isArray(v) ? '[' + v.map(kanon).join(',') + ']'
   : '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + kanon(v[k])).join(',') + '}';
-const pruefsumme = d => { const t = kanon(kern(d)); let h = 0x811c9dc5;
-  for(let i = 0; i < t.length; i++){ h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + t.length; };
+const hashText = t => { let h = 0x811c9dc5; for(let i = 0; i < t.length; i++){ h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + t.length; };
+const pruefsumme = d => hashText(kanon(kern(d)));
 function lokalGeaendert(){
+  if(MA) return !!MELD.dirty;
   if(!localStorage.getItem(LS.dirty)) return false;
   if(sync.hash && pruefsumme(D) === sync.hash){ localStorage.removeItem(LS.dirty); return false; }
   return true;
@@ -1630,17 +1799,22 @@ let syncLaeuft = false, syncFehler = '';
 function syncStatus(){
   const b = $('syncBtn'); if(!b) return;
   const dirty = syncAktiv() && !syncLaeuft && lokalGeaendert();
-  const [st, ic, txt] = !syncAktiv() ? ['off', 'cloudOff', 'Sync nicht eingerichtet']
-    : syncLaeuft ? ['busy', 'refresh', 'Gleiche ab …']
+  const [st, ic, txt] = !syncAktiv() ? ['off', 'cloudOff', MA ? T('Noch nicht verbunden') : 'Sync nicht eingerichtet']
+    : syncLaeuft ? ['busy', 'refresh', T('Gleiche ab …')]
     : syncFehler ? ['err', 'alert', 'Sync: ' + syncFehler]
-    : dirty ? ['wait', 'cloud', navigator.onLine ? 'Änderungen noch nicht hochgeladen' : 'Offline – wird später abgeglichen']
-    : ['ok', 'cloudCheck', 'Abgeglichen' + (sync.zuletzt ? ': ' + new Date(sync.zuletzt).toLocaleString('de-DE') : '')];
+    : dirty ? ['wait', 'cloud', navigator.onLine ? (MA ? T('Änderungen noch nicht gesendet') : 'Änderungen noch nicht hochgeladen') : T('Offline – wird später abgeglichen')]
+    : ['ok', 'cloudCheck', T('Abgeglichen') + (sync.zuletzt ? ': ' + new Date(sync.zuletzt).toLocaleString(L.sprache === 'ru' ? 'ru-RU' : 'de-DE') : '')];
   if(b.dataset.st !== st || b.dataset.ic !== ic){ b.dataset.st = st; b.dataset.ic = ic; b.innerHTML = icon(ic); }
   b.title = txt; b.setAttribute('aria-label', txt);
 }
 let syncTimer = null;
-function syncNachAenderung(){ syncStatus(); if(!syncAktiv()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => abgleichen(false), 20000); }
+function syncNachAenderung(){ syncStatus(); if(!syncAktiv() && !axAktiv()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => abgleichen(false), MA ? 4000 : 20000); }
 async function abgleichen(manuell){
+  if(MA) return maAbgleich(manuell);
+  await hauptAbgleich(manuell);
+  if(!syncFehler || !syncAktiv()) await austauschAbgleich(manuell);
+}
+async function hauptAbgleich(manuell){
   if(!syncAktiv() || syncLaeuft || !navigator.onLine) return;
   syncLaeuft = true; syncStatus();
   const msg = $('syncMsg'); if(manuell) msg.textContent = 'Gleiche ab …';
@@ -1691,7 +1865,7 @@ $('syncSave').onclick = () => {
 };
 $('syncNow').onclick = () => abgleichen(true);
 $('syncBtn').onclick = () => {
-  if(syncAktiv() && !syncFehler){ abgleichen(true); toast($('syncBtn').title); return; }
+  if(syncAktiv() && (!syncFehler || MA)){ abgleichen(true); toast($('syncBtn').title); return; }
   zeigeTab('cfg'); setTimeout(() => $('syncMsg').scrollIntoView({block:'center', behavior:'smooth'}), 60);
 };
 addEventListener('online', () => { syncStatus(); abgleichen(false); });
@@ -1777,7 +1951,15 @@ function qrScanner(){
   }, stop);
 }
 async function einrichten(o){
+  if(o.rolle === 'ma'){
+    if(!MA && (syncAktiv() || anzahl(D)) && !confirm('Dieses Gerät wird zur Mitarbeiter-App.\n\nDie Daten auf diesem Gerät werden entfernt (online bleibt alles erhalten). Fortfahren?')) return;
+    [LS.data, LS.dirty, LS.spiegel, LS.meld, 'za_eingang'].forEach(k => localStorage.removeItem(k));
+    localStorage.setItem(LS.sync, JSON.stringify({ax:{repo:o.r, token:o.t, pw:o.p}}));
+    localStorage.setItem(LS.local, JSON.stringify({rolle:'ma', person:o.pid, name:o.n || L.name || '', sprache:o.l || L.sprache || 'de', theme:L.theme || ''}));
+    location.reload(); return;
+  }
   if(o.rolle) return toast('Dieser Code ist für eine neuere App-Version – bitte zuerst aktualisieren');
+  if(MA) return;
   if(syncAktiv() && (o.r !== sync.repo || o.p !== sync.pw) && !confirm(`Dieses Gerät ist schon mit „${sync.repo}“ verbunden.\n\nAuf die Daten aus dem QR-Code umstellen?`)) return;
   sync = {repo:o.r, token:o.t, pw:o.p}; saveSync();
   $('s_repo').value = o.r; $('s_token').value = o.t; $('s_pw').value = o.p;
@@ -1793,6 +1975,279 @@ async function einrichten(o){
 }
 $('qrZeigen').onclick = qrZeigen;
 $('qrScannen').onclick = qrScanner;
+
+/* =====================================================================
+   Eigene App fuer die Person (Mitarbeiter-Rolle)
+   Eigenes Austausch-Repo mit zwei Dateien, je genau ein Schreiber:
+   - spiegel.json:    schreibt nur die Haupt-App (Kopie ohne eure Notizen), wird nie zurueckgelesen
+   - meldungen.json:  schreibt nur die Mitarbeiter-App (gemeldete Zeiten/Auslagen)
+   Bestaetigungen stehen synchronisiert in D.meldStatus und gelangen ueber den Spiegel zurueck.
+   ===================================================================== */
+const AX = {spiegel:'spiegel.json', meld:'meldungen.json'};
+let EINGANG = MA ? {} : load('za_eingang', {});          // zuletzt gelesene Meldungen je Person
+let SP = MA ? load(LS.spiegel, null) : null;              // Mitarbeiter-App: zuletzt gelesener Spiegel
+let axLaeuft = false; const axFehler = {};
+const axAktiv = () => !MA && Object.keys(D.cfg.austausch || {}).length > 0;
+const axZiel = pid => { const c = (D.cfg.austausch || {})[pid], token = sync.axToken || sync.token;
+  return c && c.repo && c.pw && token ? {repo:c.repo, token, pw:c.pw} : null; };
+const zufall = n => b64(crypto.getRandomValues(new Uint8Array(n))).replace(/[+/=]/g, '').slice(0, n);
+
+/* --- Haupt-App --- */
+function spiegelDaten(pid){
+  const nurPerson = o => Object.fromEntries(Object.entries(o).filter(([, x]) => x.personId === pid || x.pid === pid)
+    .map(([k, x]) => { const {notiz, ...rest} = x; return [k, rest]; }));             // eure Notizen bleiben privat
+  return {meta:{app:'Zeitabrechnung', art:'spiegel', version:APP_VERSION}, cfg:{appName:D.cfg.appName || ''},
+    person:{id:pid, name:pname(pid)}, acts:JSON.parse(JSON.stringify(D.acts)),
+    entries:nurPerson(D.entries), txs:nurPerson(D.txs), meldStatus:nurPerson(D.meldStatus)};
+}
+async function dateiSchreiben(z, pfad, inhalt, art){
+  sync.axSalt ||= b64(crypto.getRandomValues(new Uint8Array(16))); saveSync();
+  for(let v = 0; v < 3; v++){
+    const alt = await ghDatei(z, pfad, 'GET'), erstellt = new Date().toISOString();
+    const datei = {meta:{app:'Zeitabrechnung', art, erstellt, geraet:geraet()}, enc:await aesVer(inhalt, z.pw, sync.axSalt)};
+    const r = await ghDatei(z, pfad, 'PUT', {message:'Sync ' + erstellt, content:utf8b64(JSON.stringify(datei)), ...(alt ? {sha:alt.sha} : {})});
+    if(!r.konflikt) return r.content.sha;
+  }
+  throw new Error('Datei konnte nicht geschrieben werden.');
+}
+const meldZiel = m => { const s = D.meldStatus[m.id]; return s && s.ziel && (D.entries[s.ziel] || D.txs[s.ziel]) ? s.ziel : null; };
+const offeneMeldungen = pid => (EINGANG[pid] || []).filter(m => { const s = D.meldStatus[m.id]; return !s || (m.version || 1) > (s.version || 1); })
+  .sort((a, b) => a.datum.localeCompare(b.datum) || (a.start ?? 0) - (b.start ?? 0));
+const alleOffenen = () => Object.keys(EINGANG).filter(pid => D.persons[pid]).flatMap(pid => offeneMeldungen(pid).map(m => ({m, pid})));
+async function austauschAbgleich(manuell){
+  if(MA || axLaeuft || !navigator.onLine || !axAktiv()) return;
+  axLaeuft = true; const vorher = alleOffenen().length;
+  for(const pid of Object.keys(D.cfg.austausch)){
+    const z = axZiel(pid); if(!z){ axFehler[pid] = 'Kein Token für das Austausch-Repo.'; continue; }
+    try{
+      const r = await ghDatei(z, AX.meld, 'GET');
+      EINGANG[pid] = r ? Object.values((await aesEnt(ghInhalt(r).enc, z.pw)).list || {}) : [];
+      const sp = spiegelDaten(pid), h = hashText(kanon(sp));
+      if((sync.axHash || {})[pid] !== h){ await dateiSchreiben(z, AX.spiegel, sp, 'spiegel'); sync.axHash = {...sync.axHash, [pid]:h}; saveSync(); }
+      axFehler[pid] = '';
+    }catch(err){ axFehler[pid] = err.message; }
+  }
+  localStorage.setItem('za_eingang', JSON.stringify(EINGANG));
+  axLaeuft = false;
+  const n = alleOffenen().length;
+  if(n > vorher && !manuell) toast(`${n} ${n === 1 ? 'neue Meldung' : 'neue Meldungen'}`, 'Ansehen', meldungenSheet, 8000);
+  if(tab === 'erf') renderMeldBanner();
+}
+function renderMeldBanner(){
+  const el = $('meldBanner'); if(!el) return;
+  if(MA){ el.innerHTML = ''; return; }
+  const offen = alleOffenen();
+  const fehler = Object.entries(axFehler).filter(([pid, f]) => f && D.persons[pid]);
+  el.innerHTML = offen.length ? `<button class="card meldbanner" id="mbGo" style="width:100%;text-align:left"><span class="bubble" style="background:var(--ochre);color:#fff">${icon('receipt')}</span>
+      <span style="flex:1"><b>${offen.length} ${offen.length === 1 ? 'neue Meldung' : 'neue Meldungen'}</b><span class="s">von ${esc([...new Set(offen.map(x => pname(x.pid)))].join(', '))} – antippen zum Prüfen</span></span>${icon('chevR')}</button>`
+    : fehler.length ? `<div class="msg" style="margin:0 4px 10px"><span class="no">Eigene App von ${esc(pname(fehler[0][0]))}: ${esc(fehler[0][1])}</span></div>` : '';
+  const b = $('mbGo'); if(b) b.onclick = meldungenSheet;
+}
+function meldZeile(m, pid){
+  const s = D.meldStatus[m.id], neu = !s ? 'neu' : s.status === 'abgelehnt' ? 'erneut' : 'geändert';
+  if(m.art === 'auslage') return `<span class="bubble" style="background:${TX.auslage.farbe}22;color:${TX.auslage.farbe}">${icon('receipt')}</span>
+    <span class="grow"><span class="t">Auslage<span class="tag ${neu === 'neu' ? 'neu' : 'offen'}">${neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}</span></span>
+    <span class="amt num" style="font-weight:700">${eur(m.cent)}</span>`;
+  const a = act(m.actId);
+  return `<span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
+    <span class="grow"><span class="t">${esc(a.name)}<span class="tag ${neu === 'neu' ? 'neu' : 'offen'}">${neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${m.start != null ? uhr(m.start) + '–' + uhr((m.start + m.minuten) % 1440) + ' · ' : ''}${dauerT(m.minuten)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}</span></span>
+    <span class="amt num" style="font-weight:700">${eur(Math.round(m.minuten * satzAm(a, m.datum) / 60))}</span>`;
+}
+function meldungenSheet(){
+  const offen = alleOffenen();
+  if(!offen.length){ schliesseSheet(); return toast('Keine offenen Meldungen'); }
+  oeffneSheet('Meldungen prüfen', `<div class="list">${offen.map((x, i) => `<button class="row" data-k="${i}">${meldZeile(x.m, x.pid)}</button>`).join('')}</div>
+    <p class="hint">Antippen = übernehmen, ändern oder ablehnen. Übernommene Meldungen werden ganz normale Einträge.</p>
+    <div class="btns"><button class="btn" id="mAlle">${icon('check')}Alle ${offen.length} übernehmen</button></div>`, b => {
+    b.querySelectorAll('[data-k]').forEach(el => el.onclick = () => { tick(); meldPruefen(offen[+el.dataset.k]); });
+    b.querySelector('#mAlle').onclick = () => {
+      if(!confirm(`${offen.length} ${offen.length === 1 ? 'Meldung' : 'Meldungen'} unverändert übernehmen?`)) return;
+      offen.forEach(x => meldUebernehmen(x.m, x.pid, null, true)); save(); schliesseSheet(); renderAlles();
+      toast(`${offen.length} übernommen`); };
+  });
+}
+function meldPruefen({m, pid}){
+  aktionen(m.art === 'auslage' ? `Auslage ${eur(m.cent)} · ${dm(m.datum)}` : `${act(m.actId).name} · ${dm(m.datum)} · ${dauerT(m.minuten)}`, [
+    {icon:'check', text:'Übernehmen', farbe:'#557352', fn:() => {
+      if(m.art === 'arbeit'){ const z = meldZiel(m), ueber = tagEintraege(m.datum, pid).find(e => e.id !== z && e.actId === m.actId &&
+          (m.start == null || e.start == null || (m.start < e.start + e.minuten && e.start < m.start + m.minuten)));
+        if(ueber && !confirm(`Am ${dm(m.datum)} ist „${act(m.actId).name}“ schon erfasst${ueber.von ? ` (von ${ueber.von})` : ''}: ${ueber.start != null ? uhr(ueber.start) + ', ' : ''}${dauerT(ueber.minuten)}.\n\nTrotzdem übernehmen?`)) return; }
+      meldUebernehmen(m, pid); setTimeout(() => alleOffenen().length && meldungenSheet(), 250); }},
+    {icon:'pencil', text:'Ändern und übernehmen …', fn:() => m.art === 'auslage' ? buchungSheet({pruef:{m, pid}}) : eintragSheet({pruef:{m, pid}})},
+    {icon:'x', text:'Ablehnen …', rot:true, farbe:'#B8483A', fn:() => meldAblehnen(m, pid)}
+  ]);
+}
+/* w = geaenderte Werte aus dem Pruef-Sheet (null = wie gemeldet) */
+function meldUebernehmen(m, pid, w, still){
+  const jetzt = new Date().toISOString(); let ziel = meldZiel(m) || uid(), art, gleich;
+  if(m.art === 'auslage'){
+    w = w || {typ:'auslage', cent:m.cent, datum:m.datum, zahlart:'', notiz:undefined}; art = 'txs';
+    const alt = D.txs[ziel];
+    D.txs[ziel] = {typ:w.typ, cent:w.cent, datum:w.datum, personId:pid, zahlart:w.zahlart || '', notiz:w.notiz ?? (alt ? alt.notiz : '') ?? '',
+      notizMa:m.notiz || '', quelle:m.id, von:pname(pid), bestaetigt:L.name || '', erstellt:alt ? alt.erstellt : jetzt, ...(alt ? {geaendert:jetzt} : {})};
+    gleich = w.typ === 'auslage' && w.cent === m.cent && w.datum === m.datum;
+  }else{
+    w = w || {actId:m.actId, datum:m.datum, start:m.start ?? null, minuten:m.minuten, notiz:undefined}; art = 'entries';
+    const alt = D.entries[ziel], cent = alt && alt.actId === w.actId && alt.datum === w.datum ? alt.cent : satzAm(act(w.actId), w.datum);
+    D.entries[ziel] = {datum:w.datum, personId:pid, actId:w.actId, start:w.start ?? null, ende:w.start != null ? (w.start + w.minuten) % 1440 : null,
+      minuten:w.minuten, cent, notiz:(w.notiz ?? (alt ? alt.notiz : '')) || '', notizMa:m.notiz || '', quelle:m.id, von:pname(pid), bestaetigt:L.name || '',
+      erstellt:alt ? alt.erstellt : jetzt, ...(alt ? {geaendert:jetzt} : {})};
+    gleich = w.actId === m.actId && w.datum === m.datum && (w.start ?? null) === (m.start ?? null) && w.minuten === m.minuten;
+  }
+  D.meldStatus[m.id] = {pid, status:gleich ? 'ok' : 'geaendert', version:m.version || 1, ziel, art, am:jetzt, von:L.name || ''};
+  if(still) return;
+  save(); neuIds = new Set([ziel]); renderAlles();
+  toast(gleich ? 'Übernommen' : 'Geändert übernommen', 'Rückgängig', () => { delete D[art][ziel]; delete D.meldStatus[m.id]; save(); renderAlles(); });
+}
+function meldAblehnen(m, pid){
+  oeffneSheet('Meldung ablehnen', `<div class="list"><button class="row" style="pointer-events:none">${meldZeile(m, pid)}</button></div>
+    <div class="list" style="margin-top:12px"><div class="field"><label>Grund</label><input id="agG" placeholder="sieht ${esc(pname(pid))} in ihrer App"></div></div>
+    <div class="btns"><button class="btn" id="agOk" style="background:var(--danger)">${icon('x')}Ablehnen</button></div>`, b => {
+    setTimeout(() => b.querySelector('#agG').focus(), 400);
+    b.querySelector('#agOk').onclick = () => {
+      D.meldStatus[m.id] = {pid, status:'abgelehnt', version:m.version || 1, grund:b.querySelector('#agG').value.trim(), am:new Date().toISOString(), von:L.name || ''};
+      save(); schliesseSheet(); renderAlles(); toast('Abgelehnt'); };
+  });
+}
+function austauschSheet(pid){
+  const c = (D.cfg.austausch || {})[pid] || {}, n = esc(pname(pid));
+  oeffneSheet(`Eigene App für ${pname(pid)}`, `
+    <p class="hint" style="margin:0 4px 12px">${n} meldet Zeiten und Auslagen selbst; ihr bestätigt sie hier. Ihre App liest nur eine verschlüsselte Kopie ihrer Einträge und Zahlungen (ohne eure Notizen) und kann eure Daten nicht verändern.</p>
+    <div class="list">
+      <div class="field"><label>Austausch-Repo</label><input id="xR" value="${esc(c.repo || '')}" placeholder="besitzer/repo" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field"><label>Token für ${n}</label><input id="xT" class="mask" value="${esc(c.maToken || '')}" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+      <div class="field"><label>Sprache</label><select id="xL"><option value="de">Deutsch</option><option value="ru"${c.sprache === 'ru' ? ' selected' : ''}>Русский</option></select></div>
+      <div class="field"><label>Euer Token</label><input id="xE" class="mask" value="${esc(sync.axToken || '')}" placeholder="leer = Sync-Token" autocomplete="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true"></div>
+    </div>
+    <p class="hint">Ein <b>eigenes</b> privates Repo nur für den Austausch anlegen – nie das Daten-Repo. Token für ${n}: Fine-grained, nur dieses Repo, „Contents: Read and write“. Euer Token (Sync-Token oder hier eigener, nur auf diesem Gerät) braucht ebenfalls Zugriff darauf.</p>
+    <div class="btns"><button class="btn" id="xOk">${icon('check')}Speichern und prüfen</button></div>
+    <div class="msg" id="xMsg">${c.repo && axFehler[pid] ? `<span class="no">${esc(axFehler[pid])}</span>` : ''}</div>
+    ${c.repo ? `<div class="list" style="margin-top:12px">
+      <button class="row" id="xQr"><span class="bubble" style="background:var(--sage-soft);color:var(--sage-d)">${icon('qr')}</span><span class="grow"><span class="t">QR-Code für ${n}</span><span class="s">auf ihrem Handy: App öffnen → „Mit QR-Code“</span></span></button>
+      <button class="row" id="xDel"><span class="bubble" style="background:var(--surface2);color:var(--danger)">${icon('trash')}</span><span class="grow"><span class="t" style="color:var(--danger)">Zugang beenden</span><span class="s">danach Token bei GitHub widerrufen</span></span></button>
+    </div><div id="xQrOut"></div>` : ''}`, b => {
+    const q = s => b.querySelector(s), meld = (t, ok) => q('#xMsg').innerHTML = `<span class="${ok ? 'ok' : 'no'}">${esc(t)}</span>`;
+    q('#xOk').onclick = async () => {
+      const repo = q('#xR').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$|\/$/g, ''), maToken = q('#xT').value.trim();
+      if(!/^[\w.-]+\/[\w.-]+$/.test(repo)) return meld('Repo bitte als „besitzer/name“ angeben.');
+      if(repo.toLowerCase() === (sync.repo || '').toLowerCase()) return meld('Nicht das Daten-Repo verwenden – sonst könnte die App eure Daten lesen.');
+      if(!maToken) return meld(`Token für ${pname(pid)} eintragen.`);
+      if(maToken === sync.token) return meld('Nicht euren eigenen Token weitergeben – eigenen Token nur für das Austausch-Repo erstellen.');
+      sync.axToken = q('#xE').value.trim(); if(!sync.axToken) delete sync.axToken;
+      sync.axHash = {...sync.axHash}; delete sync.axHash[pid]; saveSync();
+      D.cfg.austausch = {...(D.cfg.austausch || {}), [pid]:{repo, maToken, sprache:q('#xL').value, pw:c.pw || zufall(24)}};
+      save(); meld('Prüfe …', true);
+      if(!axZiel(pid)) return meld('Kein eigener Token vorhanden (Sync einrichten oder „Euer Token“ eintragen).');
+      await austauschAbgleich(true);
+      if(axFehler[pid]) return meld(axFehler[pid]);
+      schliesseSheet(); setTimeout(() => austauschSheet(pid), 150);
+      toast(`Verbunden – jetzt den QR-Code für ${pname(pid)} zeigen`);
+    };
+    if(!c.repo) return;
+    q('#xQr').onclick = async () => {
+      const out = q('#xQrOut'); out.innerHTML = '<p class="hint" style="text-align:center">Erzeuge Code …</p>';
+      try{ out.innerHTML = `<p class="hint" style="margin:12px 4px 8px">Nur ${n} zeigen. Der Code öffnet ihre App mit Zugriff auf das Austausch-Repo.</p><div class="qrbox">${await qrSvg(einrichtLink({v:1, rolle:'ma', r:c.repo, t:c.maToken, p:c.pw, pid, n:pname(pid), l:c.sprache || 'de'}))}</div>`;
+        out.scrollIntoView({block:'end', behavior:'smooth'}); }
+      catch(err){ out.innerHTML = `<p class="msg"><span class="no">${esc(err.message)}</span></p>`; }
+    };
+    q('#xDel').onclick = () => {
+      if(!confirm(`Eigene App für ${pname(pid)} beenden?\n\nIhre App erhält keine neuen Daten mehr. Widerruft danach ihren Token bei GitHub.`)) return;
+      const ax = {...D.cfg.austausch}; delete ax[pid]; D.cfg.austausch = ax; delete EINGANG[pid];
+      localStorage.setItem('za_eingang', JSON.stringify(EINGANG)); save(); schliesseSheet(); renderAlles(); toast('Zugang beendet');
+    };
+  });
+}
+
+/* --- Mitarbeiter-App --- */
+const meldBetrag = m => m.art === 'auslage' ? m.cent : Math.round(m.minuten * satzAm(act(m.actId), m.datum) / 60);
+/* offen = noch nicht (in dieser Fassung) bearbeitet; abgelehnt; erledigt = uebernommen, steht als Eintrag im Spiegel */
+function meldZustand(m){ const s = D.meldStatus[m.id];
+  if(!s || (s.version || 1) < (m.version || 1)) return 'offen';
+  return s.status === 'abgelehnt' ? 'abgelehnt' : 'erledigt'; }
+const meineMeldungen = f => Object.values(MELD.list).filter(m => meldZustand(m) !== 'erledigt').filter(f || (() => true));
+const vorlaeufig = () => meineMeldungen(m => meldZustand(m) === 'offen').reduce((s, m) => s + meldBetrag(m), 0);
+function ausSpiegel(sp){
+  const pid = sp.person.id;
+  D = Object.assign(leer(), {cfg:sp.cfg || {}, persons:{[pid]:{name:sp.person.name, sort:0}}, acts:sp.acts || {}, entries:sp.entries || {}, txs:sp.txs || {}, meldStatus:sp.meldStatus || {}});
+  if(L.person !== pid){ L.person = pid; saveL(); }
+}
+function meldLoeschen(mid){
+  const alt = MELD.list[mid]; if(!alt) return;
+  delete MELD.list[mid]; saveMeld(); renderAlles();
+  toast(T('Gelöscht'), T('Rückgängig'), () => { MELD.list[mid] = alt; saveMeld(); renderAlles(); });
+}
+function meldAktionen(mid){
+  const m = MELD.list[mid]; if(!m) return;
+  aktionen(m.art === 'auslage' ? `${T('Auslage')} · ${eur(m.cent)}` : `${aNameId(m.actId)} · ${dauerT(m.minuten)}`, [
+    {icon:'pencil', text:T(meldZustand(m) === 'abgelehnt' ? 'Erneut melden' : 'Bearbeiten'), fn:() => m.art === 'auslage' ? auslageSheet({meldId:mid}) : eintragSheet({meldId:mid})},
+    {icon:'trash', text:T(meldZustand(m) === 'abgelehnt' ? 'Entfernen' : 'Löschen'), rot:true, farbe:'#B8483A', fn:() => meldLoeschen(mid)}
+  ]);
+}
+function auslageSheet({meldId}){
+  const alt = meldId ? MELD.list[meldId] : null, s = alt && D.meldStatus[alt.id];
+  oeffneSheet(T('Auslage melden'), `
+    <div class="amtin"><input id="aA" inputmode="decimal" placeholder="0,00" value="${alt ? centZuEuro(alt.cent) : ''}"><span style="font-family:var(--round);font-size:30px;font-weight:800;color:var(--muted)">€</span></div>
+    <div class="list">
+      <div class="field"><label>${T('Datum')}</label><input type="date" id="aD" value="${alt ? alt.datum : tag}"></div>
+      <div class="field"><label>${T('Notiz')}</label><input id="aN" placeholder="${T('z. B. Putzmittel')}" value="${esc(alt ? alt.notiz : '')}"></div>
+    </div>
+    <p class="hint">${T('Was hast du bezahlt?')} ${T('Gemeldet, wartet auf Bestätigung')}${s && s.status === 'abgelehnt' && s.version >= alt.version ? ` · ${T('Diese Meldung wurde abgelehnt')}${s.grund ? ': ' + esc(s.grund) : ''}` : ''}</p>
+    <div class="btns">${alt ? `<button class="btn ghost" id="aDel" style="flex:0 0 64px;color:var(--danger)">${icon('trash')}</button>` : ''}<button class="btn" id="aOk">${icon('check')}${T(alt ? 'Speichern' : 'Melden')}</button></div>`, b => {
+    const q = x => b.querySelector(x);
+    if(alt) q('#aDel').onclick = () => { schliesseSheet(); meldLoeschen(meldId); };
+    q('#aOk').onclick = () => {
+      const c = euroZuCent(q('#aA').value);
+      if(!c || c < 0){ q('#aA').focus(); q('#aA').style.color = 'var(--danger)'; setTimeout(() => q('#aA').style.color = '', 600); return; }
+      const mid = meldId || uid(), jetzt = new Date().toISOString();
+      MELD.list[mid] = {id:mid, art:'auslage', datum:q('#aD').value || heute(), cent:c, notiz:q('#aN').value.trim(),
+        version: alt ? (alt.version || 1) + 1 : 1, erstellt: alt ? alt.erstellt : jetzt, ...(alt ? {geaendert:jetzt} : {})};
+      saveMeld(); schliesseSheet(); renderAlles(); tick(); toast(`${T('Auslage')} ${eur(c)} · ${T('Gemeldet')}`);
+    };
+    if(!alt) setTimeout(() => q('#aA').focus(), 450);
+  });
+}
+function renderMaOffen(){
+  const el = $('maOffen'); if(!MA){ el.innerHTML = ''; return; }
+  const ms = meineMeldungen().sort((a, b) => b.datum.localeCompare(a.datum));
+  if(!ms.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<h2>${T('Noch nicht bestätigt')}</h2><div class="list">${ms.map(m => { const z = meldZustand(m), s = D.meldStatus[m.id];
+    const tagH = z === 'abgelehnt' ? `<span class="tag ab">${T('Abgelehnt')}</span>` : `<span class="tag offen">${T('Offen')}</span>`;
+    const grund = z === 'abgelehnt' && s.grund ? ` · ${T('Grund')}: ${esc(s.grund)}` : '';
+    const a = m.art === 'auslage' ? {farbe:TX.auslage.farbe, icon:'receipt'} : act(m.actId);
+    return `<button class="row" data-m="${m.id}"><span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
+      <span class="grow"><span class="t">${m.art === 'auslage' ? T('Auslage') : esc(aName(a))}${tagH}</span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)}${m.art === 'arbeit' ? ' · ' + dauerT(m.minuten) : ''}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}${grund}</span></span>
+      <span class="amt num" style="font-weight:700${z === 'abgelehnt' ? ';text-decoration:line-through;color:var(--muted)' : ''}">${eur(meldBetrag(m))}</span></button>`; }).join('')}</div>`;
+  el.onclick = e => { const r = e.target.closest('[data-m]'); if(!r) return; tick(); meldAktionen(r.dataset.m); };
+}
+async function maAbgleich(manuell){
+  const ax = sync.ax; if(!ax || syncLaeuft || !navigator.onLine) return;
+  syncLaeuft = true; syncStatus();
+  try{
+    const z = {repo:ax.repo, token:ax.token};
+    const r = await ghDatei(z, AX.spiegel, 'GET');
+    if(r && r.sha !== sync.spSha){
+      const datei = ghInhalt(r), sp = await aesEnt(datei.enc, ax.pw);
+      sp.meta = {...sp.meta, erstellt:datei.meta.erstellt}; SP = sp;
+      localStorage.setItem(LS.spiegel, JSON.stringify(sp)); sync.spSha = r.sha; saveSync(); ausSpiegel(sp);
+    }
+    const rm = await ghDatei(z, AX.meld, 'GET');
+    if(rm && rm.sha !== sync.mlSha && !Object.keys(MELD.list).length && !MELD.dirty){      // neues Geraet: vorhandene Meldungen uebernehmen
+      MELD.list = (await aesEnt(ghInhalt(rm).enc, ax.pw)).list || {};
+    }
+    for(const m of Object.values(MELD.list)) if(meldZustand(m) === 'erledigt'){ delete MELD.list[m.id]; MELD.dirty = true; }
+    if(MELD.dirty){ sync.mlSha = await dateiSchreiben({...z, pw:ax.pw}, AX.meld, {meta:{app:'Zeitabrechnung', art:'meldungen', version:APP_VERSION}, list:MELD.list}, 'meldungen'); MELD.dirty = false; }
+    else if(rm) sync.mlSha = rm.sha;
+    localStorage.setItem(LS.meld, JSON.stringify(MELD));
+    sync.zuletzt = new Date().toISOString(); saveSync(); syncFehler = '';
+  }catch(err){ syncFehler = err.message; }
+  syncLaeuft = false; syncStatus(); renderAlles();
+  if(manuell && syncFehler) toast(syncFehler);
+}
+if(MA){
+  $('maSync').onclick = () => abgleichen(true);
+  $('maRaus').onclick = () => { if(!confirm(T('Wirklich entfernen? Alle Daten auf diesem Gerät werden gelöscht.'))) return;
+    Object.values(LS).concat('za_eingang').forEach(k => localStorage.removeItem(k)); location.reload(); };
+}
 
 /* ---------- Version & Update ---------- */
 $('appVersion').textContent = 'v' + APP_VERSION;
@@ -1817,15 +2272,17 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
 }
 
 /* ---------- Start ---------- */
+if(MA){ document.body.classList.add('ma'); if(SP) ausSpiegel(SP); }
 hydrate();
 thema();
+spracheAnwenden();
 renderErfassen();
 syncStatus();
 lokaleKopie();
 const startCode = location.hash.startsWith('#za=') ? einrichtLesen(location.hash) : null;
 if(location.hash.startsWith('#za=')) history.replaceState(null, '', location.pathname + location.search);   // Zugangsdaten nicht in der Adresse lassen
 if(startCode) setTimeout(() => einrichten(startCode), 300);
-else{ abgleichen(false); if(!anzahl(D) && !syncAktiv()) setTimeout(willkommen, 500); }
+else{ abgleichen(false); if(!MA && !anzahl(D) && !syncAktiv()) setTimeout(willkommen, 500); }
 </script>
 </body>
 </html>
