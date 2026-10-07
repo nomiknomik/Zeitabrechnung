@@ -1635,7 +1635,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1741,9 +1741,13 @@ async function aesEnt(e, pw){
 const ghInhalt = r => JSON.parse(new TextDecoder().decode(unb64(r.content.replace(/\s/g, ''))));
 const gh = (method, body) => ghDatei(sync, SYNC_DATEI, method, body);
 async function ghDatei(ziel, pfad, method, body){
-  const res = await fetch(`https://api.github.com/repos/${ziel.repo}/contents/${pfad}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
-    method, cache:'no-store', headers:{Authorization:'Bearer ' + ziel.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
-    body: body && JSON.stringify(body)});
+  const ab = new AbortController(), uhrAb = setTimeout(() => ab.abort(), 25000);     // nie endlos warten
+  let res;
+  try{ res = await fetch(`https://api.github.com/repos/${ziel.repo}/contents/${pfad}` + (method === 'GET' ? '?t=' + Date.now() : ''), {
+    method, cache:'no-store', signal:ab.signal, headers:{Authorization:'Bearer ' + ziel.token, Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'},
+    body: body && JSON.stringify(body)}); }
+  catch(err){ throw new Error(err.name === 'AbortError' ? 'GitHub antwortet nicht (Zeitüberschreitung).' : 'Keine Verbindung zu GitHub.'); }
+  finally{ clearTimeout(uhrAb); }
   if(method === 'GET' && res.status === 404){
     const r = await fetch(`https://api.github.com/repos/${ziel.repo}`, {cache:'no-store', headers:{Authorization:'Bearer ' + ziel.token}});
     if(!r.ok) throw new Error(r.status === 401 ? 'Token ungültig oder abgelaufen.' : 'Repo nicht gefunden oder Token hat keinen Zugriff.');
@@ -2253,28 +2257,38 @@ function renderMaOffen(){
       <span class="amt num" style="font-weight:700${z === 'abgelehnt' ? ';text-decoration:line-through;color:var(--muted)' : ''}">${eur(meldBetrag(m))}</span></button>`; }).join('')}</div>`;
   el.onclick = e => { const r = e.target.closest('[data-m]'); if(!r) return; tick(); meldAktionen(r.dataset.m); };
 }
+let maSchritt = '', maLauf = 0;
+const maStep = t => { maSchritt = t; const el = $('maMsg'); if(el) el.textContent = t + ' …'; };
 async function maAbgleich(manuell){
   const ax = sync.ax; if(!ax || syncLaeuft || !navigator.onLine) return;
-  syncLaeuft = true; syncStatus();
+  syncLaeuft = true; syncStatus(); const lauf = ++maLauf;
+  const wache = setTimeout(() => { if(lauf !== maLauf || !syncLaeuft) return;          // Notbremse: Anzeige nie endlos drehen lassen
+    maLauf++; syncLaeuft = false; syncFehler = 'Zeitüberschreitung bei: ' + maSchritt; syncStatus(); renderAlles(); toast(syncFehler); }, 90000);
   try{
     const z = {repo:ax.repo, token:ax.token};
+    maStep('Lade Daten');
     const r = await ghDatei(z, AX.spiegel, 'GET');
+    if(!r && !SP) throw new Error('Noch keine Daten vom Arbeitgeber – dort einmal abgleichen.');
     if(r && r.sha !== sync.spSha){
+      maStep('Entschlüssele');
       const datei = ghInhalt(r), sp = await aesEnt(datei.enc, ax.pw);
       sp.meta = {...sp.meta, erstellt:datei.meta.erstellt}; SP = sp;
       localStorage.setItem(LS.spiegel, JSON.stringify(sp)); sync.spSha = r.sha; saveSync(); ausSpiegel(sp);
     }
+    maStep('Prüfe Meldungen');
     const rm = await ghDatei(z, AX.meld, 'GET');
     if(rm && rm.sha !== sync.mlSha && !Object.keys(MELD.list).length && !MELD.dirty){      // neues Geraet: vorhandene Meldungen uebernehmen
       MELD.list = (await aesEnt(ghInhalt(rm).enc, ax.pw)).list || {};
     }
     for(const m of Object.values(MELD.list)) if(meldZustand(m) === 'erledigt'){ delete MELD.list[m.id]; MELD.dirty = true; }
-    if(MELD.dirty){ sync.mlSha = await dateiSchreiben({...z, pw:ax.pw}, AX.meld, {meta:{app:'Zeitabrechnung', art:'meldungen', version:APP_VERSION}, list:MELD.list}, 'meldungen'); MELD.dirty = false; }
+    if(MELD.dirty){ maStep('Sende Meldungen'); sync.mlSha = await dateiSchreiben({...z, pw:ax.pw}, AX.meld, {meta:{app:'Zeitabrechnung', art:'meldungen', version:APP_VERSION}, list:MELD.list}, 'meldungen'); MELD.dirty = false; }
     else if(rm) sync.mlSha = rm.sha;
     localStorage.setItem(LS.meld, JSON.stringify(MELD));
     sync.zuletzt = new Date().toISOString(); saveSync(); syncFehler = '';
   }catch(err){ syncFehler = err.message; }
-  syncLaeuft = false; syncStatus(); renderAlles();
+  clearTimeout(wache); if(lauf !== maLauf) return;
+  maSchritt = ''; syncLaeuft = false; syncStatus(); renderAlles();
+  if(syncFehler && $('maMsg')) $('maMsg').textContent = syncFehler;
   if(manuell && syncFehler) toast(syncFehler);
 }
 if(MA){
