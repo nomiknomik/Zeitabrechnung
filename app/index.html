@@ -747,9 +747,13 @@ function konfetti(){
 /* Zahlen-Animation fuer Betraege: 'rollen' (mechanischer Zaehler), 'zaehlen' (hochzaehlen) oder 'aus' */
 const zaehler = new WeakMap();
 const zahlModus = () => L.zahlen || (L.zaehlen === false ? 'aus' : 'rollen');
-function zaehle(el, ziel, fmt = eur, ms = 900){
-  const von = zaehler.get(el) ?? 0; zaehler.set(el, ziel);
-  if(von === ziel || zahlModus() === 'aus' || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = fmt(ziel); return; }
+/* Animiert nur echte Aenderungen: der letzte Wert wird je Schluessel (z. B. Tag, Person) gemerkt,
+   erstes Anzeigen oder Tab-Wechsel ohne Aenderung zeigt die Zahl ruhig an */
+const zahlStand = new Map();
+function zaehle(el, ziel, fmt = eur, ms = 900, key){
+  const von = key ? zahlStand.get(key) : zaehler.get(el);
+  zaehler.set(el, ziel); if(key) zahlStand.set(key, ziel);
+  if(von === undefined || von === ziel || zahlModus() === 'aus' || matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = fmt(ziel); return; }
   if(zahlModus() === 'rollen') return rolle(el, fmt(von), fmt(ziel), ziel > von);
   const t0 = performance.now();
   const schritt = t => { const p = Math.min(1, (t - t0) / ms), k = 1 - Math.pow(1 - p, 4);
@@ -870,7 +874,7 @@ function renderErfassen(sanft){
   $('dayCard').innerHTML = ringSvg(Object.entries(teile).map(([c, v]) => ({c, v})), min, min ? dauer(min) : '0') +
     `<div><div class="meta">${tagText(tag)}${p && personen().length > 1 ? ' · ' + esc(p.name) : ''}</div><div class="big num" id="dayAmt"></div>
      <div class="meta">${es.length ? `${anz(es.length, 'Eintrag')} · ${dauerT(min)}${offen ? ` · ${T('davon vorläufig')} ${eur(offen)}` : ''}` : T('Noch nichts erfasst – Tätigkeit antippen')}</div></div>`;
-  zaehle($('dayAmt'), cent, eur, 600);
+  zaehle($('dayAmt'), cent, eur, 600, `tag:${tag}:${pid}`);
 
   // Wochensumme
   const mo = montag(tag), so = plusTage(mo, 6);
@@ -1197,7 +1201,7 @@ function renderKonto(){
   bal.dataset.dir = s > 0 ? 'plus' : s < 0 ? 'minus' : 'zero';
   $('balLbl').textContent = MA ? T(s > 0 ? 'Sie schulden dir' : s < 0 ? 'Du schuldest' : 'Ausgeglichen')
     : s > 0 ? `Offen an ${p.name}` : s < 0 ? `${p.name} schuldet euch` : `Mit ${p.name} ausgeglichen`;
-  zaehle($('balVal'), Math.abs(s), eur, 1100);
+  zaehle($('balVal'), Math.abs(s), eur, 1100, `saldo:${p.id}`);
 
   // Verlauf der letzten 90 Tage als Sparkline
   const bis = heute(), von = plusTage(bis, -89), {reihe} = saldoReihe(p.id, von, bis);
@@ -1416,7 +1420,7 @@ function renderAuswertung(){
     <h2>${T('Jahr')} ${r.von.slice(0,4)} ${T('im Überblick')}</h2>
     <div class="card">${heatmap(r.von.slice(0,4), pid)}</div>
     <div class="btns" style="margin-top:18px"><button class="btn ghost" id="csvBtn">${icon('share')}${T('Zeitraum als CSV exportieren')}</button></div>`;
-  zaehle($('kV'), cent, eur, 900);
+  zaehle($('kV'), cent, eur, 900, `aus:${per.p}:${r.von}:${pid}`);
   $('csvBtn').onclick = () => csvExport(r, pid);
   const hm = $('ausBody').querySelector('.heat'); if(hm){ const t = hm.querySelector('.t') || hm.querySelector(`[data-d="${r.von}"]`); if(t) hm.scrollLeft = t.offsetLeft - hm.clientWidth / 2; }
 }
@@ -1658,7 +1662,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.2.6';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
