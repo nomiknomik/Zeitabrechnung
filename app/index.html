@@ -1634,7 +1634,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1920,8 +1920,8 @@ function qrScanner(){
   oeffneSheet('QR-Code scannen', `
     <div class="scan"><video id="qV" playsinline muted autoplay></video><div class="frame"></div><div class="off" id="qOff">Kamera wird gestartet …</div></div>
     <p class="hint" style="text-align:center">Halte die Kamera auf den Code am anderen Gerät<br>(dort: Einstellungen → „Weiteres Gerät per QR-Code“).</p>
-    <div class="btns"><button class="btn ghost" id="qFoto">${icon('upload')}Foto vom Code wählen</button></div>
-    <input type="file" id="qDatei" accept="image/*" class="hidden">
+    <div class="btns"><button class="btn ghost" id="qCam">${icon('scan')}Foto aufnehmen</button><button class="btn ghost" id="qFoto">${icon('upload')}Bild wählen</button></div>
+    <input type="file" id="qDatei" accept="image/*" class="hidden"><input type="file" id="qKamera" accept="image/*" capture="environment" class="hidden">
     <div class="list" style="margin-top:12px"><div class="field"><label>Oder Link</label><input id="qTxt" placeholder="einfügen" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>
     <div class="msg" id="qMsg"></div>`, async b => {
     const q = s => b.querySelector(s), meld = t => q('#qMsg').innerHTML = `<span class="no">${esc(t)}</span>`;
@@ -1934,19 +1934,35 @@ function qrScanner(){
       return r && r.data; };
     q('#qTxt').onchange = e => treffer(e.target.value);
     q('#qFoto').onclick = () => q('#qDatei').click();
+    q('#qCam').onclick = () => { stop(); q('#qKamera').click(); };       // Live-Kamera freigeben, sonst blockiert iOS die Foto-Kamera
+    q('#qKamera').onchange = e => q('#qDatei').onchange(e);
     q('#qDatei').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return;
       try{ const jsQR = await lib('scan'), bild = await createImageBitmap(f);
         const txt = lies(jsQR, bild, bild.width, bild.height, 1400, true);
         if(!txt) return meld('Kein QR-Code im Bild erkannt.'); treffer(txt);
       }catch(err){ meld(err.message); } };
-    let jsQR;
-    try{ [jsQR, strom] = await Promise.all([lib('scan'), navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})]); }
-    catch(err){ q('#qOff').textContent = err.name === 'NotAllowedError' ? 'Kein Kamerazugriff erlaubt – Foto wählen oder Link einfügen.' : err.message && /Internet/.test(err.message) ? err.message : 'Kamera nicht verfügbar – Foto wählen oder Link einfügen.'; return; }
+    // Kamera und Bibliothek getrennt starten; jeder Schritt sichtbar, nach 12 s Hinweis auf Foto
+    const off = q('#qOff'), status = t => { if(off.isConnected) off.textContent = t; };
+    const libP = lib('scan'); libP.catch(() => {});
+    const wache = setTimeout(() => { if(!aus && off.isConnected) status(off.textContent + ' – dauert ungewöhnlich lange. Alternativ „Foto aufnehmen“ unten.'); }, 12000);
+    try{
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error(), {name:'NotSupported'});
+      status('Warte auf Kamera-Freigabe …');
+      strom = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
+    }catch(err){ clearTimeout(wache); status(err.name === 'NotAllowedError' ? 'Kein Kamerazugriff erlaubt – „Foto aufnehmen“ unten nutzen.' : 'Kamera nicht verfügbar – „Foto aufnehmen“ unten nutzen.'); return; }
     if(aus){ strom.getTracks().forEach(t => t.stop()); return; }
-    const v = q('#qV'); v.srcObject = strom; await v.play().catch(() => {}); q('#qOff').remove();
-    const schleife = () => { if(aus) return;
-      if(v.readyState >= 2 && v.videoWidth){ const txt = lies(jsQR, v, v.videoWidth, v.videoHeight, 640, false); if(txt && treffer(txt)) return; }
-      setTimeout(() => requestAnimationFrame(schleife), 120); };
+    const v = q('#qV'); v.muted = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+    status('Starte Bild …'); v.srcObject = strom;
+    const weg = () => { if(v.videoWidth && off.isConnected){ off.remove(); clearTimeout(wache); } };
+    v.addEventListener('loadedmetadata', () => { v.play().catch(() => {}); weg(); });
+    v.addEventListener('playing', weg);
+    v.play().catch(() => {});
+    let jsQR;
+    try{ status('Lade Erkennung …'); jsQR = await libP; }
+    catch(err){ clearTimeout(wache); status(err.message); return; }
+    const schleife = () => { if(aus) return; weg();
+      if(v.readyState >= 2 && v.videoWidth){ try{ const txt = lies(jsQR, v, v.videoWidth, v.videoHeight, 640, false); if(txt && treffer(txt)) return; }catch(e){} }
+      setTimeout(() => requestAnimationFrame(schleife), 150); };
     schleife();
   }, stop);
 }
