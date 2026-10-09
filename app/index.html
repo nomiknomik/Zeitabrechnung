@@ -177,6 +177,9 @@ button.row:active{background:var(--surface2)}
 .balance::before{content:"";position:absolute;width:180px;height:180px;border-radius:50%;left:-60px;bottom:-110px;background:rgba(255,255,255,.08)}
 .balance .lbl{font-size:14px;opacity:.9;font-weight:600;position:relative}
 .balance .val{font-family:var(--round);font-size:46px;font-weight:800;letter-spacing:-.02em;margin:4px 0 8px;position:relative}
+.balance .kl{font-size:13px;font-weight:600;opacity:.92;margin:-8px 0 8px;position:relative;display:flex;align-items:center;gap:5px}
+.balance .kl:empty{display:none}
+.balance .kl .ic{width:14px;height:14px}
 .balance .spark{height:46px;width:100%;position:relative;display:block}
 .balance .facts{display:flex;gap:16px;font-size:13px;opacity:.92;position:relative;margin-top:6px}
 .balance .facts b{display:block;font-family:var(--round);font-size:16px}
@@ -384,6 +387,7 @@ body:not(.ma) .nur-ma{display:none!important}
     <div class="balance" id="balance" data-dir="zero">
       <div class="lbl" id="balLbl">Ausgeglichen</div>
       <div class="val num" id="balVal">0,00 €</div>
+      <div class="kl" id="balKl"></div>
       <svg class="spark" id="balSpark" viewBox="0 0 300 46" preserveAspectRatio="none"></svg>
       <div class="facts" id="balFacts"></div>
     </div>
@@ -548,7 +552,7 @@ const RU = {
   'Was hast du bezahlt?':'Что ты оплатила?','z. B. Putzmittel':'например, моющие средства',
   'Diese Meldung wurde abgelehnt':'Эта запись отклонена','Zahlungsart':'Способ оплаты','bar':'наличные','Überweisung':'перевод',
   'Hinweis':'Подсказка','Du bist angemeldet als':'Ты подключена как','Wirklich entfernen? Alle Daten auf diesem Gerät werden gelöscht.':'Точно удалить? Все данные на этом устройстве будут удалены.',
-  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве','Trinkgeld':'чаевые','zu klären':'уточнить','Zu klären':'Уточнить','antippen zum Prüfen':'нажми, чтобы проверить','Korrektur offen':'Исправление ждёт','Zeiten prüfen, bei Bedarf ändern und melden – oder unverändert bestätigen.':'Проверь время, при необходимости измени и отправь – или подтверди без изменений.','Bitte prüfen':'Проверь, пожалуйста'
+  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве','Trinkgeld':'чаевые','davon':'из них','zu klären':'уточнить','Zu klären':'Уточнить','antippen zum Prüfen':'нажми, чтобы проверить','Korrektur offen':'Исправление ждёт','Zeiten prüfen, bei Bedarf ändern und melden – oder unverändert bestätigen.':'Проверь время, при необходимости измени и отправь – или подтверди без изменений.','Bitte prüfen':'Проверь, пожалуйста'
 };
 const T = s => (typeof L !== 'undefined' && L.sprache === 'ru' && RU[s]) || s;
 const PLURAL = {Eintrag:['Eintrag','Einträge','запись','записи','записей'], Buchung:['Buchung','Buchungen','операция','операции','операций'], Meldung:['Meldung','Meldungen','запись','записи','записей']};
@@ -699,6 +703,7 @@ function satzAm(a, datum){
 }
 const betrag = e => Math.round(e.minuten * e.cent / 60) + (e.trinkgeld || 0);     // Trinkgeld in Cent, zusaetzlich zur Arbeitszeit
 const TIP_SCHRITT = 500;
+const klaerBetrag = pid => eintraege(e => e.klaeren && e.personId === pid).reduce((s, e) => s + betrag(e), 0);   // Summe der Eintraege „zu klären“
 const rundeAuf = (c, schritt) => Math.max(schritt, Math.round(c / schritt) * schritt);   // kaufmaennisch auf 1 € / 5 €
 const eintraege = (filter) => Object.entries(D.entries).map(([id, e]) => ({id, ...e})).filter(filter || (() => true));
 const tagEintraege = (datum, pid) => eintraege(e => e.datum === datum && (!pid || e.personId === pid))
@@ -1254,7 +1259,8 @@ function renderKonto(){
     $('balLbl').textContent = MA ? T('Warte auf den ersten Abgleich …') : 'Noch keine Person angelegt'; $('balVal').textContent = eur(0); $('balFacts').innerHTML = ''; $('balSpark').innerHTML = '';
     $('ledger').innerHTML = `<div class="empty">${icon('users')}Lege zuerst in den Einstellungen eine Person an.</div>`; return;
   }
-  const vorl = MA ? vorlaeufig() : 0, s = saldo(p.id) + vorl;
+  const vorl = MA ? vorlaeufig() : 0, s = saldo(p.id) + vorl, kl = klaerBetrag(p.id);
+  $('balKl').innerHTML = kl ? `${icon('alert')}${T('davon')} ${eur(kl)} ${T('zu klären')}` : '';
   const bal = $('balance');
   bal.dataset.dir = s > 0 ? 'plus' : s < 0 ? 'minus' : 'zero';
   $('balLbl').textContent = MA ? T(s > 0 ? 'Sie schulden dir' : s < 0 ? 'Du schuldest' : 'Ausgeglichen')
@@ -1320,15 +1326,17 @@ function buchungSheet({id, typ, pruef}){
   const alt = id ? D.txs[id] : null, p = aktPerson(), pm = pruef && pruef.m;
   const st = alt ? {...alt} : pm ? {typ:'auslage', cent:pm.cent, datum:pm.datum, personId:pruef.pid, zahlart:'bar', notiz:''} : {typ, cent:0, datum:heute(), personId:p.id, zahlart:'bar', notiz:''};
   const vorher = saldo(st.personId);
-  if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = rundeAuf(vorher, 100);   // Vorschlag: Offenes auf volle Euro gerundet
+  const kl = alt ? 0 : klaerBetrag(st.personId), basis = kl > 0 && vorher - kl > 0 ? vorher - kl : vorher;   // „zu klären“ nicht automatisch auszahlen
+  if(!alt && typ === 'auszahlung' && vorher > 0) st.cent = rundeAuf(basis, 100);   // Vorschlag: Offenes (ohne „zu klären“) auf volle Euro gerundet
   let vz = alt && alt.typ === 'korrektur' ? (alt.cent < 0 ? -1 : 1) : 1;
   oeffneSheet(pm ? 'Ausgabe prüfen' : alt ? 'Buchung bearbeiten' : TX[st.typ].name, `
     ${pm ? `<p class="hint" style="margin:0 4px 12px">${esc(pname(pruef.pid))} hat gemeldet: ${eur(pm.cent)} am ${dm(pm.datum)}${pm.notiz ? ` · „${esc(pm.notiz)}“` : ''}</p>` : ''}
     <div class="typegrid" id="bT">${Object.entries(TX).map(([k, t]) => `<button data-t="${k}"><span class="bubble" style="background:${t.farbe}22;color:${t.farbe}">${icon(t.icon)}</span>${t.name}</button>`).join('')}</div>
     <div class="amtin"><input id="bA" inputmode="decimal" placeholder="0,00" value="${st.cent ? centZuEuro(Math.abs(st.cent)) : ''}"><span style="font-family:var(--round);font-size:30px;font-weight:800;color:var(--muted)">€</span></div>
     <div class="chips hidden" id="bV" style="justify-content:center;margin:0 0 6px"><button class="chip" data-v="1">${icon('plus')}Guthaben ${esc(pname(st.personId))}</button><button class="chip" data-v="-1">${icon('minus')}Schuld ${esc(pname(st.personId))}</button></div>
-    ${!alt && vorher > 0 ? `<div class="chips" id="bR" style="justify-content:center;margin:0 0 6px;flex-wrap:nowrap;gap:6px">${[['genau', vorher], ['1 €', rundeAuf(vorher, 100)], ['5 €', rundeAuf(vorher, 500)]]
-      .map(([l, c]) => `<button class="chip" data-r="${c}" style="padding:7px 11px;font-size:13.5px;gap:5px"><span style="font-size:10.5px;opacity:.7;font-weight:600">${l === 'genau' ? 'genau' : 'auf ' + l}</span>${eur(c)}</button>`).join('')}</div>` : ''}
+    ${!alt && vorher > 0 ? `<div class="chips" id="bR" style="justify-content:center;margin:0 0 6px;flex-wrap:nowrap;gap:6px">${[['genau', basis], ['1 €', rundeAuf(basis, 100)], ['5 €', rundeAuf(basis, 500)]]
+      .map(([l, c]) => `<button class="chip" data-r="${c}" style="padding:7px 11px;font-size:13.5px;gap:5px"><span style="font-size:10.5px;opacity:.7;font-weight:600">${l === 'genau' ? 'genau' : 'auf ' + l}</span>${eur(c)}</button>`).join('')}</div>
+      ${basis !== vorher ? `<div class="chips" id="bK" style="justify-content:center;margin:0 0 6px"><button class="chip" data-r="${vorher}" style="padding:7px 11px;font-size:13.5px;gap:5px"><span style="font-size:10.5px;opacity:.7;font-weight:600">inkl. ${eur(kl)} zu klären</span>${eur(vorher)}</button></div>` : ''}` : ''}
     <p class="hint" id="bH" style="text-align:center;margin:0 0 14px"></p>
     <div class="list">
       <div class="field"><label>Datum</label><input type="date" id="bD" value="${st.datum}"></div>
@@ -1344,14 +1352,16 @@ function buchungSheet({id, typ, pruef}){
       b.querySelectorAll('#bT button').forEach(x => x.classList.toggle('on', x.dataset.t === st.typ));
       q('#bV').classList.toggle('hidden', st.typ !== 'korrektur');
       b.querySelectorAll('#bV .chip').forEach(x => x.classList.toggle('on', +x.dataset.v === vz));
-      if(q('#bR')){ q('#bR').classList.toggle('hidden', st.typ !== 'auszahlung'); const c = euroZuCent(q('#bA').value || '0');
-        b.querySelectorAll('#bR .chip').forEach(x => x.classList.toggle('on', +x.dataset.r === c)); }
+      if(q('#bR')){ q('#bR').classList.toggle('hidden', st.typ !== 'auszahlung'); if(q('#bK')) q('#bK').classList.toggle('hidden', st.typ !== 'auszahlung'); const c = euroZuCent(q('#bA').value || '0');
+        b.querySelectorAll('#bR .chip, #bK .chip').forEach(x => x.classList.toggle('on', +x.dataset.r === c)); }
       const n = neuSaldo();
-      q('#bH').innerHTML = TX[st.typ].hilfe.replace('{p}', esc(pname(st.personId))) + `<br>Saldo danach: <b class="num">${n > 0 ? 'offen ' + eur(n) : n < 0 ? 'Schuld ' + eur(-n) : 'ausgeglichen'}</b>`;
+      q('#bH').innerHTML = TX[st.typ].hilfe.replace('{p}', esc(pname(st.personId))) + `<br>Saldo danach: <b class="num">${n > 0 ? 'offen ' + eur(n) : n < 0 ? 'Schuld ' + eur(-n) : 'ausgeglichen'}</b>`
+        + (st.typ === 'auszahlung' && kl > 0 ? `<br><span style="color:var(--terra)">${eur(kl)} sind noch zu klären${n >= kl ? ' und bleiben offen' : ''}.</span>` : '');
       if(!alt && !pm) $('shTitle').textContent = TX[st.typ].name;
     };
     q('#bT').onclick = e => { const x = e.target.closest('[data-t]'); if(!x) return; tick(); st.typ = x.dataset.t; zeig(); };
     q('#bV').onclick = e => { const x = e.target.closest('[data-v]'); if(!x) return; tick(); vz = +x.dataset.v; zeig(); };
+    if(q('#bK')) q('#bK').onclick = e => q('#bR').onclick(e);
     if(q('#bR')) q('#bR').onclick = e => { const x = e.target.closest('[data-r]'); if(!x) return; tick(); q('#bA').value = centZuEuro(+x.dataset.r); breit(); zeig(); };
     // Eingabefeld fuellt die linke Haelfte (rechtsbuendig vor dem €); nur die Schrift wird bei langen Betraegen kleiner.
     // Grosszuegiger Puffer, weil iOS die gerundete Schrift anders misst als die Canvas-Messung.
@@ -1723,7 +1733,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
