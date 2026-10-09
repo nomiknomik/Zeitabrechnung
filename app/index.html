@@ -1723,7 +1723,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -1982,7 +1982,13 @@ $('syncBtn').onclick = () => {
 };
 addEventListener('online', () => { syncStatus(); abgleichen(false); });
 addEventListener('offline', syncStatus);
-document.addEventListener('visibilitychange', () => { lokaleKopie(); abgleichen(false); if(!document.hidden){ syncFelder(); renderAlles(); } });
+/* Zurueck in die App nach laengerer Pause (oder neuem Tag): Reiter Erfassen, heutiger Tag */
+let versteckt = 0, versteckTag = heute();
+document.addEventListener('visibilitychange', () => { lokaleKopie(); abgleichen(false);
+  if(document.hidden){ versteckt = Date.now(); versteckTag = heute(); return; }
+  syncFelder();
+  if(versteckt && (Date.now() - versteckt > 5 * 60000 || versteckTag !== heute()) && !$('sheet').classList.contains('on')){ tag = heute(); per.anker = heute(); zeigeTab('erf'); }
+  else renderAlles(); });
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
 /* --- Einrichtung per QR-Code: Repo, Token, Passwort als Link #za=… (base64url-JSON) ---
@@ -2187,7 +2193,8 @@ function renderMeldBanner(){
     const k = $('klGo'); if(k) k.onclick = maKlaerenSheet; return; }
   const offen = alleOffenen();
   const fehler = Object.entries(axFehler).filter(([pid, f]) => f && D.persons[pid]);
-  const kl = zuKlaeren();
+  const korr = new Set(alleOffenen().map(x => x.m.korrektur).filter(Boolean));
+  const kl = zuKlaeren().filter(e => !korr.has(e.id));          // schon von der Person gemeldet: steht in der Meldungs-Karte
   const klKarte = kl.length ? `<button class="card meldbanner" id="klGo" style="width:100%;text-align:left;background:linear-gradient(135deg,var(--terra-soft),var(--surface));border-color:color-mix(in srgb,var(--terra) 25%,transparent)"><span class="bubble" style="background:var(--terra);color:#fff">${icon('alert')}</span>
       <span style="flex:1"><b>${kl.length} ${kl.length === 1 ? 'Eintrag' : 'Einträge'} zu klären</b><span class="s">antippen zum Prüfen</span></span>${icon('chevR')}</button>` : '';
   el.innerHTML = klKarte + (offen.length ? `<button class="card meldbanner" id="mbGo" style="width:100%;text-align:left"><span class="bubble" style="background:var(--ochre);color:#fff">${icon('receipt')}</span>
@@ -2226,7 +2233,7 @@ function meldZeile(m, pid){
     <span class="amt num" style="font-weight:700">${eur(m.cent)}</span>`;
   const a = act(m.actId);
   return `<span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
-    <span class="grow"><span class="t">${esc(a.name)}<span class="tag ${neu === 'neu' && !m.korrektur ? 'neu' : 'offen'}">${m.korrektur ? 'Korrektur' : neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${m.start != null ? uhr(m.start) + '–' + uhr((m.start + m.minuten) % 1440) + ' · ' : ''}${dauerT(m.minuten)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}${(() => { const e = m.korrektur && D.entries[m.korrektur]; return e ? `<br>vorher: ${e.start != null ? uhr(e.start) + '–' + uhr((e.start + e.minuten) % 1440) + ' · ' : ''}${dauerT(e.minuten)}${e.datum !== m.datum ? ' · ' + dm(e.datum) : ''}` : ''; })()}</span></span>
+    <span class="grow"><span class="t">${esc(a.name)}<span class="tag ${neu === 'neu' && !m.korrektur ? 'neu' : 'offen'}">${m.korrektur ? 'Korrektur' : neu}</span>${m.korrektur && D.entries[m.korrektur] && D.entries[m.korrektur].klaeren ? '<span class="tag ab">zu klären</span>' : ''}</span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${m.start != null ? uhr(m.start) + '–' + uhr((m.start + m.minuten) % 1440) + ' · ' : ''}${dauerT(m.minuten)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}${(() => { const e = m.korrektur && D.entries[m.korrektur]; return e ? `<br>vorher: ${e.start != null ? uhr(e.start) + '–' + uhr((e.start + e.minuten) % 1440) + ' · ' : ''}${dauerT(e.minuten)}${e.datum !== m.datum ? ' · ' + dm(e.datum) : ''}` : ''; })()}</span></span>
     <span class="amt num" style="font-weight:700">${eur(Math.round(m.minuten * satzAm(a, m.datum) / 60))}</span>`;
 }
 function meldungenSheet(){
