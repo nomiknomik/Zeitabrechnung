@@ -548,7 +548,7 @@ const RU = {
   'Was hast du bezahlt?':'Что ты оплатила?','z. B. Putzmittel':'например, моющие средства',
   'Diese Meldung wurde abgelehnt':'Эта запись отклонена','Zahlungsart':'Способ оплаты','bar':'наличные','Überweisung':'перевод',
   'Hinweis':'Подсказка','Du bist angemeldet als':'Ты подключена как','Wirklich entfernen? Alle Daten auf diesem Gerät werden gelöscht.':'Точно удалить? Все данные на этом устройстве будут удалены.',
-  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве','Trinkgeld':'чаевые','zu klären':'уточнить'
+  'Gemeldet, wartet auf Bestätigung':'Отправлено, ждёт подтверждения','nur auf diesem Gerät':'только на этом устройстве','Trinkgeld':'чаевые','zu klären':'уточнить','Zu klären':'Уточнить','antippen zum Prüfen':'нажми, чтобы проверить','Korrektur offen':'Исправление ждёт','Zeiten prüfen, bei Bedarf ändern und melden – oder unverändert bestätigen.':'Проверь время, при необходимости измени и отправь – или подтверди без изменений.','Bitte prüfen':'Проверь, пожалуйста'
 };
 const T = s => (typeof L !== 'undefined' && L.sprache === 'ru' && RU[s]) || s;
 const PLURAL = {Eintrag:['Eintrag','Einträge','запись','записи','записей'], Buchung:['Buchung','Buchungen','операция','операции','операций'], Meldung:['Meldung','Meldungen','запись','записи','записей']};
@@ -903,8 +903,10 @@ function renderErfassen(sanft){
 }
 /* Tagesliste: Eintraege + (Mitarbeiter-App) eigene, noch nicht erledigte Meldungen als Pseudo-Eintraege */
 function tagListe(datum, pid){
-  const es = tagEintraege(datum, pid);
+  let es = tagEintraege(datum, pid);
   if(!MA) return es;
+  const korr = new Set(meineMeldungen(m => m.korrektur && meldZustand(m) === 'offen').map(m => m.korrektur));
+  es = es.filter(e => !korr.has(e.id));                  // Eintrag mit offener Korrektur: die Korrektur zeigt ihn
   const ms = meineMeldungen(m => m.art === 'arbeit' && m.datum === datum).map(m => ({id:'m:' + m.id, meld:m, zustand:meldZustand(m), datum:m.datum, personId:pid,
     actId:m.actId, start:m.start, ende:m.start != null ? (m.start + m.minuten) % 1440 : null, minuten:m.minuten, cent:satzAm(act(m.actId), m.datum), notizMa:m.notiz, von:L.name || ''}));
   return es.concat(ms).sort((a, b) => (a.start ?? 9999) - (b.start ?? 9999));
@@ -1003,7 +1005,7 @@ function renderEintraege(es){
   $('swipeHint').textContent = MA ? T('Tipp: offene Meldung antippen = ändern oder löschen.') : 'Tipp: Eintrag nach links wischen = löschen, nach rechts = duplizieren, gedrückt halten = mehr.';
   $('swipeHint').style.display = L.wischGelernt || (MA && !es.some(e => e.meld)) ? 'none' : '';
   el.innerHTML = es.map(e => { const a = act(e.actId);
-    const stat = e.meld ? (e.zustand === 'abgelehnt' ? `<span class="tag ab">${T('Abgelehnt')}</span>` : `<span class="tag offen">${T('Offen')}</span>`)
+    const stat = e.meld ? (e.zustand === 'abgelehnt' ? `<span class="tag ab">${T('Abgelehnt')}</span>` : `<span class="tag offen">${T(e.meld.korrektur ? 'Korrektur offen' : 'Offen')}</span>`)
       : !MA && e.quelle ? `<span class="tag neu" title="von der Person gemeldet">${icon('check', 'width:11px;height:11px;display:inline;vertical-align:-1px')}</span>` : '';
     const klar = !e.meld && e.klaeren ? `<span class="tag offen">${T('zu klären')}</span>` : '';
     const grund = e.meld && e.zustand === 'abgelehnt' && D.meldStatus[e.meld.id]?.grund ? ` · ${T('Grund')}: ${esc(D.meldStatus[e.meld.id].grund)}` : '';
@@ -1022,7 +1024,7 @@ const kuerzel = n => n.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).t
 /* Wischen: links = loeschen, rechts = duplizieren; Tippen = bearbeiten; Halten = Aktionen */
 function wischbar(row){
   const fg = row.querySelector('.fg'), bg = row.querySelector('.bg'), id = row.dataset.id;
-  if(MA && !id.startsWith('m:')){ fg.onclick = () => toast(T('Bereits bestätigt – Änderungen nur durch den Arbeitgeber.')); return; }
+  if(MA && !id.startsWith('m:')){ fg.onclick = () => D.entries[id] && D.entries[id].klaeren ? eintragSheet({korrigiere:id}) : toast(T('Bereits bestätigt – Änderungen nur durch den Arbeitgeber.')); return; }
   const mid = MA ? id.slice(2) : null;
   const eintragAktionen = id => mid ? meldAktionen(mid) : eintragAktionenAG(id);
   const eintragLoeschen = id => mid ? meldLoeschen(mid) : eintragLoeschenAG(id);
@@ -1100,22 +1102,25 @@ function rad(el, werte, fmt, onChange){
 const STD24 = [...Array(24).keys()], STD13 = [...Array(13).keys()], MIN5 = [...Array(12).keys()].map(i => i * 5);
 
 /* id = Eintrag bearbeiten; meldId = eigene Meldung bearbeiten (Mitarbeiter-App); pruef = {m, pid}: Meldung pruefen und uebernehmen */
-function eintragSheet({id, actId, meldId, pruef}){
-  const altM = meldId ? MELD.list[meldId] : null, pm = pruef ? pruef.m : null;
+/* korrigiere = Eintrags-ID „zu klären“ (Mitarbeiter-App): Werte vorbelegen, Speichern meldet eine Korrektur */
+function eintragSheet({id, actId, meldId, pruef, korrigiere}){
+  if(korrigiere && !meldId){ const v = Object.values(MELD.list).find(m => m.korrektur === korrigiere && meldZustand(m) !== 'erledigt'); if(v) meldId = v.id; }
+  const altM = meldId ? MELD.list[meldId] : null, pm = pruef ? pruef.m : null, kE = korrigiere && !altM ? D.entries[korrigiere] : null;
+  korrigiere = korrigiere || (altM && altM.korrektur) || null;
   const alt = id ? D.entries[id] : null;
   const a0 = alt ? alt.actId : altM ? altM.actId : pm ? pm.actId : actId;
   let vorbild = null;
   const kandidaten = Object.values(D.entries).concat(MA ? Object.values(MELD.list).filter(m => m.art === 'arbeit') : []);
   for(const e of kandidaten) if(e.actId === a0 && (!vorbild || e.datum > vorbild.datum || (e.datum === vorbild.datum && (e.erstellt || '') > (vorbild.erstellt || '')))) vorbild = e;
-  const quelle = alt || altM || pm;
-  const st = quelle ? {actId:a0, personId:alt ? alt.personId : pm ? pruef.pid : aktPerson().id, datum:quelle.datum, start:quelle.start ?? null, minuten:quelle.minuten, notiz:(pm ? '' : quelle.notiz) || '',
-                       trinkgeld:alt ? alt.trinkgeld || 0 : 0, klaeren:!!(alt && alt.klaeren)}
+  const quelle = alt || altM || pm || kE;
+  const st = quelle ? {actId:quelle.actId || a0, personId:alt ? alt.personId : pm ? pruef.pid : aktPerson().id, datum:quelle.datum, start:quelle.start ?? null, minuten:quelle.minuten, notiz:(pm || kE ? '' : quelle.notiz) || '',
+                       trinkgeld:(alt || (pm && D.entries[pm.korrektur]) || {}).trinkgeld || 0, klaeren:!!(alt && alt.klaeren)}
                     : {actId:a0, personId:aktPerson().id, datum:tag, start:vorbild ? vorbild.start ?? null : 9 * 60, minuten:vorbild ? vorbild.minuten : 120, notiz:'', trinkgeld:0, klaeren:false};
   let feld = st.start != null ? 'start' : 'dauer';
   const satz = () => alt && alt.actId === st.actId && alt.datum === st.datum ? alt.cent : satzAm(act(st.actId), st.datum);
   const ps = MA || pm ? [] : personen(), as = taetigkeiten();
   const DAUERN = [60, 90, 120, 150, 180, 240];
-  const titel = () => pm ? `Meldung prüfen · ${tagText(st.datum)}` : alt ? 'Eintrag bearbeiten' : altM ? `${T('Bearbeiten')} · ${tagText(st.datum)}` : `${aNameId(st.actId)} · ${tagText(st.datum)}`;
+  const titel = () => pm ? `Meldung prüfen · ${tagText(st.datum)}` : alt ? 'Eintrag bearbeiten' : kE ? `${T('Bitte prüfen')} · ${tagText(st.datum)}` : altM ? `${T('Bearbeiten')} · ${tagText(st.datum)}` : `${aNameId(st.actId)} · ${tagText(st.datum)}`;
 
   oeffneSheet(titel(), `
     ${ps.length > 1 ? `<div class="chips" id="esP" style="margin:0 0 12px">${ps.map(p => `<button class="chip" data-p="${p.id}">${icon('user')}${esc(p.name)}</button>`).join('')}</div>` : ''}
@@ -1204,7 +1209,7 @@ function eintragSheet({id, actId, meldId, pruef}){
       const s = satz(), n = aNameId(st.actId);
       if(MA){
         const mid = meldId || uid(), jetzt = new Date().toISOString();
-        MELD.list[mid] = {id:mid, art:'arbeit', datum:st.datum, actId:st.actId, start:st.start, minuten:st.minuten, notiz:st.notiz.trim(),
+        MELD.list[mid] = {id:mid, art:'arbeit', datum:st.datum, actId:st.actId, start:st.start, minuten:st.minuten, notiz:st.notiz.trim(), ...(korrigiere ? {korrektur:korrigiere} : {}),
           version: altM ? (altM.version || 1) + 1 : 1, erstellt: altM ? altM.erstellt : jetzt, ...(altM ? {geaendert:jetzt} : {})};
         tag = st.datum; neuIds = new Set(['m:' + mid]); saveMeld(); schliesseSheet(); renderErfassen(true); tick();
         toast(`${n}: ${dauerT(st.minuten)} · ${eur(Math.round(st.minuten * s / 60))} · ${T('Gemeldet')}`);
@@ -1718,7 +1723,7 @@ function willkommen(){
    2. Online: AES-GCM-verschluesselt in ein privates GitHub-Repo; Abgleich ueber
       Datei-SHA, Drei-Wege-Merge je Eintrag gegen die zuletzt abgeglichene Basis
    ===================================================================== */
-const APP_VERSION = '1.3.8';
+const APP_VERSION = '1.4.0';
 const APP_BUILD   = '07.10.2026';
 const kern = d => JSON.parse(JSON.stringify(Object.fromEntries(BEREICHE.map(b => [b, (d && d[b]) || {}]))));
 const backupDaten = () => ({meta:{app:'Zeitabrechnung', version:APP_VERSION, erstellt:new Date().toISOString()}, ...kern(D)});
@@ -2150,7 +2155,8 @@ async function dateiSchreiben(z, pfad, inhalt, art){
   }
   throw new Error('Datei konnte nicht geschrieben werden.');
 }
-const meldZiel = m => { const s = D.meldStatus[m.id]; return s && s.ziel && (D.entries[s.ziel] || D.txs[s.ziel]) ? s.ziel : null; };
+const meldZiel = m => { const s = D.meldStatus[m.id]; if(s && s.ziel && (D.entries[s.ziel] || D.txs[s.ziel])) return s.ziel;
+  return m.korrektur && D.entries[m.korrektur] ? m.korrektur : null; };              // Korrektur eines „zu klären“-Eintrags
 const offeneMeldungen = pid => (EINGANG[pid] || []).filter(m => { const s = D.meldStatus[m.id]; return !s || (m.version || 1) > (s.version || 1); })
   .sort((a, b) => a.datum.localeCompare(b.datum) || (a.start ?? 0) - (b.start ?? 0));
 const alleOffenen = () => Object.keys(EINGANG).filter(pid => D.persons[pid]).flatMap(pid => offeneMeldungen(pid).map(m => ({m, pid})));
@@ -2175,7 +2181,10 @@ async function austauschAbgleich(manuell){
 }
 function renderMeldBanner(){
   const el = $('meldBanner'); if(!el) return;
-  if(MA){ el.innerHTML = ''; return; }
+  if(MA){ const kl = maZuKlaeren();
+    el.innerHTML = kl.length ? `<button class="card meldbanner" id="klGo" style="width:100%;text-align:left;background:linear-gradient(135deg,var(--terra-soft),var(--surface));border-color:color-mix(in srgb,var(--terra) 25%,transparent)"><span class="bubble" style="background:var(--terra);color:#fff">${icon('alert')}</span>
+      <span style="flex:1"><b>${anz(kl.length, 'Eintrag')} ${T('zu klären')}</b><span class="s">${T('antippen zum Prüfen')}</span></span>${icon('chevR')}</button>` : '';
+    const k = $('klGo'); if(k) k.onclick = maKlaerenSheet; return; }
   const offen = alleOffenen();
   const fehler = Object.entries(axFehler).filter(([pid, f]) => f && D.persons[pid]);
   const kl = zuKlaeren();
@@ -2188,6 +2197,18 @@ function renderMeldBanner(){
   const k = $('klGo'); if(k) k.onclick = klaerenSheet;
 }
 const zuKlaeren = () => eintraege(e => e.klaeren).sort((a, b) => a.datum.localeCompare(b.datum) || (a.start ?? 0) - (b.start ?? 0));
+/* Mitarbeiter-App: markierte Eintraege ohne bereits gemeldete Korrektur */
+const maZuKlaeren = () => { const korr = new Set(meineMeldungen(m => m.korrektur && meldZustand(m) === 'offen').map(m => m.korrektur)); return zuKlaeren().filter(e => !korr.has(e.id)); };
+function maKlaerenSheet(){
+  const ls = maZuKlaeren(); if(!ls.length){ schliesseSheet(); return; }
+  oeffneSheet(T('Zu klären'), `<div class="list">${ls.map(e => { const a = act(e.actId);
+    return `<button class="row" data-k="${e.id}"><span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
+      <span class="grow"><span class="t">${esc(aName(a))}</span><span class="s">${WT[wtag(e.datum)]} ${dm(e.datum)} · ${e.start != null ? uhr(e.start) + '–' + uhr((e.start + e.minuten) % 1440) + ' · ' : ''}${dauerT(e.minuten)}</span></span>
+      <span class="amt num" style="font-weight:700">${eur(betrag(e))}</span></button>`; }).join('')}</div>
+    <p class="hint">${T('Zeiten prüfen, bei Bedarf ändern und melden – oder unverändert bestätigen.')}</p>`, b => {
+    b.querySelectorAll('[data-k]').forEach(el => el.onclick = () => { tick(); const e = D.entries[el.dataset.k]; schliesseSheet(); setTimeout(() => { tag = e.datum; zeigeTab('erf'); eintragSheet({korrigiere:el.dataset.k}); }, 150); });
+  });
+}
 function klaerenSheet(){
   const ls = zuKlaeren(); if(!ls.length){ schliesseSheet(); return; }
   oeffneSheet('Zu klären', `<div class="list">${ls.map(e => { const a = act(e.actId);
@@ -2205,7 +2226,7 @@ function meldZeile(m, pid){
     <span class="amt num" style="font-weight:700">${eur(m.cent)}</span>`;
   const a = act(m.actId);
   return `<span class="bubble" style="background:${a.farbe}22;color:${a.farbe}">${icon(a.icon)}</span>
-    <span class="grow"><span class="t">${esc(a.name)}<span class="tag ${neu === 'neu' ? 'neu' : 'offen'}">${neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${m.start != null ? uhr(m.start) + '–' + uhr((m.start + m.minuten) % 1440) + ' · ' : ''}${dauerT(m.minuten)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}</span></span>
+    <span class="grow"><span class="t">${esc(a.name)}<span class="tag ${neu === 'neu' && !m.korrektur ? 'neu' : 'offen'}">${m.korrektur ? 'Korrektur' : neu}</span></span><span class="s">${WT[wtag(m.datum)]} ${dm(m.datum)} · ${m.start != null ? uhr(m.start) + '–' + uhr((m.start + m.minuten) % 1440) + ' · ' : ''}${dauerT(m.minuten)} · ${esc(pname(pid))}${m.notiz ? ` · „${esc(m.notiz)}“` : ''}${(() => { const e = m.korrektur && D.entries[m.korrektur]; return e ? `<br>vorher: ${e.start != null ? uhr(e.start) + '–' + uhr((e.start + e.minuten) % 1440) + ' · ' : ''}${dauerT(e.minuten)}${e.datum !== m.datum ? ' · ' + dm(e.datum) : ''}` : ''; })()}</span></span>
     <span class="amt num" style="font-weight:700">${eur(Math.round(m.minuten * satzAm(a, m.datum) / 60))}</span>`;
 }
 function meldungenSheet(){
@@ -2246,7 +2267,7 @@ function meldUebernehmen(m, pid, w, still){
     const alt = D.entries[ziel], cent = alt && alt.actId === w.actId && alt.datum === w.datum ? alt.cent : satzAm(act(w.actId), w.datum);
     D.entries[ziel] = {datum:w.datum, personId:pid, actId:w.actId, start:w.start ?? null, ende:w.start != null ? (w.start + w.minuten) % 1440 : null,
       minuten:w.minuten, cent, notiz:(w.notiz ?? (alt ? alt.notiz : '')) || '', notizMa:m.notiz || '',
-      ...(w.trinkgeld ? {trinkgeld:w.trinkgeld} : {}), ...(w.klaeren ? {klaeren:true} : {}), quelle:m.id, von:pname(pid), bestaetigt:L.name || '',
+      ...((w.trinkgeld ?? (alt && alt.trinkgeld)) ? {trinkgeld:w.trinkgeld ?? alt.trinkgeld} : {}), ...(w.klaeren ? {klaeren:true} : {}), quelle:m.id, von:alt && alt.von ? alt.von : pname(pid), bestaetigt:L.name || '',
       erstellt:alt ? alt.erstellt : jetzt, ...(alt ? {geaendert:jetzt} : {})};
     gleich = w.actId === m.actId && w.datum === m.datum && (w.start ?? null) === (m.start ?? null) && w.minuten === m.minuten;
   }
@@ -2321,7 +2342,7 @@ function meldZustand(m){ const s = D.meldStatus[m.id];
   if(!s || (s.version || 1) < (m.version || 1)) return 'offen';
   return s.status === 'abgelehnt' ? 'abgelehnt' : 'erledigt'; }
 const meineMeldungen = f => Object.values(MELD.list).filter(m => meldZustand(m) !== 'erledigt').filter(f || (() => true));
-const vorlaeufig = () => meineMeldungen(m => meldZustand(m) === 'offen').reduce((s, m) => s + meldBetrag(m), 0);
+const vorlaeufig = () => meineMeldungen(m => meldZustand(m) === 'offen').reduce((s, m) => s + meldBetrag(m) - (m.korrektur && D.entries[m.korrektur] ? betrag(D.entries[m.korrektur]) - (D.entries[m.korrektur].trinkgeld || 0) : 0), 0);   // Korrektur zaehlt nur als Differenz der Arbeitszeit (Trinkgeld bleibt)
 function ausSpiegel(sp){
   const pid = sp.person.id;
   D = Object.assign(leer(), {cfg:sp.cfg || {}, persons:{[pid]:{name:sp.person.name, sort:0}}, acts:sp.acts || {}, entries:sp.entries || {}, txs:sp.txs || {}, meldStatus:sp.meldStatus || {}});
